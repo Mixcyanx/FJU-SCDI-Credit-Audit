@@ -67,7 +67,7 @@ tr.rev td{background:var(--warnbg)}
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(560px,94vw);padding:16px;max-height:90vh}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 label{display:block;font-size:13px;color:var(--mute);margin:8px 0 2px}
-input[type=text],input[type=number],select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+input[type=text],input[type=password],input[type=url],input[type=number],select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
 textarea{min-height:90px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center}
@@ -435,8 +435,15 @@ function vCourses(A){
    return '<div class="crs" onclick="tg(\''+a.id+'\')"><div class="cl"><b>'+esc(a.name)+'</b><small>'+esc(a.code)+'・'+esc(a.dept)+'・'+esc(a.credits)+' 學分・'+esc(a.status==='PLANNED'?'規劃中':a.grade)+'</small></div>'+catChip(r)+'</div>'+(OPEN[a.id]?detail(r):'');}).join('')+'</div>';}).join('');
 }
 function vImport(){
- let h='<div class="card"><h2>匯入成績單 PDF</h2><div class="drop"><p style="margin:0 0 8px">選擇一份或多份「輔仁大學學生學期成績單」PDF（可一次多學期）</p><input type="file" id="fi" accept="application/pdf" multiple onchange="handleFiles(this.files)"></div><div class="note">PDF 只在你的瀏覽器內解析，不會上傳到任何伺服器。解析後需要你確認才會加入計算。</div>'+
-  '<details><summary class="mut" style="cursor:pointer">PDF 解析失敗？貼上成績單文字</summary><textarea id="pt" placeholder="從成績單複製文字後貼上"></textarea><button class="btn sm" onclick="handleText()">解析貼上的文字</button></details><div id="imsg" class="note"></div></div>';
+ let h='<div class="card"><h2>從輔大 SIS 自動同步</h2>'+
+  '<div class="note">在這裡手動輸入 LDAP 學號與密碼，系統會把登入資料送到你設定的「SIS 同步橋接 API」，由 Cloudflare Worker 呼叫輔大實際的 LDAP 登入 API，再讀取「學期成績查詢」資料。密碼不會寫入 localStorage；同步完成後密碼欄會立即清空。</div>'+
+  '<label>學號</label><input type="text" id="sis_uid" inputmode="numeric" autocomplete="username" placeholder="例如：514170026">'+
+  '<label>密碼</label><input type="password" id="sis_pwd" autocomplete="current-password" placeholder="請輸入 LDAP 密碼">'+
+  '<label>SIS 同步橋接 API</label><input type="url" id="sis_api" value="'+esc(localStorage.getItem("fju-sis-api")||"")+'" placeholder="例如：https://你的-worker.workers.dev/sis-sync">'+
+  '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="sis_btn" onclick="sisLoginSync()">登入並自動擷取</button><button class="btn" onclick="window.open(\'https://sis.fju.edu.tw/#/\',\'_blank\',\'noopener\')">開啟輔大 SIS</button></div>'+
+  '<div id="sis_msg" class="note"></div></div>'+
+  '<details class="card"><summary style="cursor:pointer;font-weight:700">備用：匯入成績單 PDF</summary><div class="drop" style="margin-top:10px"><p style="margin:0 0 8px">選擇一份或多份「輔仁大學學生學期成績單」PDF（可一次多學期）</p><input type="file" id="fi" accept="application/pdf" multiple onchange="handleFiles(this.files)"></div><div class="note">PDF 只在你的瀏覽器內解析，不會上傳到任何伺服器。解析後需要你確認才會加入計算。</div>'+
+  '<details><summary class="mut" style="cursor:pointer">PDF 解析失敗？貼上成績單文字</summary><textarea id="pt" placeholder="從成績單複製文字後貼上"></textarea><button class="btn sm" onclick="handleText()">解析貼上的文字</button></details><div id="imsg" class="note"></div></details>';
  pending.forEach((p,pi)=>{
   const chk=p.chk; 
   h+='<div class="card"><h3>'+esc(p.name)+'</h3><div class="g2"><div><label>學年度</label><input type="number" value="'+(p.ay||'')+'" onchange="pendSem('+pi+',\'ay\',this.value)"></div><div><label>學期</label><input type="number" value="'+(p.sem||'')+'" onchange="pendSem('+pi+',\'sem\',this.value)"></div></div>'+
@@ -489,6 +496,60 @@ function restore(){try{const j=JSON.parse($('#bk').value);if(!j.attempts)throw 0
 function mapCol(el){const d=el.dataset.dp;const cur=S.map[d]||DEF_MAP[d]||{ok:false};S.map[d]={college:el.value,ok:cur.ok&&!!el.value,src:'使用者設定'};save();render();}
 function mapOk(el){const d=el.dataset.dp;const cur=S.map[d]||DEF_MAP[d]||{college:''};if(el.checked&&!cur.college){alert('請先選擇學院');el.checked=false;return;}S.map[d]={college:cur.college,ok:el.checked,src:'使用者確認'};save();render();}
 function addDept(){const v=normDept($('#newdept').value);if(!v)return;S.map[v]=S.map[v]||{college:'',ok:false};save();render();}
+
+/* ============ SIS 自動同步 ============ */
+/*
+  靜態 GitHub Pages 無法直接讀取 sis.fju.edu.tw 的登入後資料：
+  瀏覽器受 Same-Origin/CORS 與登入 Session/Cookie 限制。
+  因此前端只負責收集一次性帳密，真正登入與擷取由使用者自行部署的 bridge API 執行。
+  預期 POST JSON:
+    { studentId, password }
+  預期回傳 JSON（二擇一）:
+    1) { semesters:[{ay,sem,rows:[{type,code,dept,name,credits,grade}]}] }
+    2) { attempts:[{ay,sem,type,code,dept,name,credits,grade,status?}] }
+*/
+async function sisLoginSync(){
+ const uidEl=$('#sis_uid'), pwdEl=$('#sis_pwd'), apiEl=$('#sis_api'), msg=$('#sis_msg'), btn=$('#sis_btn');
+ const studentId=(uidEl&&uidEl.value||'').trim();
+ const password=(pwdEl&&pwdEl.value||'');
+ const api=(apiEl&&apiEl.value||'').trim();
+ if(!studentId||!password){msg.textContent='請輸入學號與 LDAP 密碼。';return;}
+ if(!api){msg.textContent='請先填入你部署完成的 Cloudflare Worker 網址。';return;}
+ localStorage.setItem('fju-sis-api',api);
+ btn.disabled=true; msg.textContent='正在登入輔大 SIS 並讀取歷年成績…';
+ try{
+  const res=await fetch(api,{
+   method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({studentId,password})
+  });
+  let data=null;
+  try{data=await res.json();}catch(_){}
+  if(!res.ok) throw new Error((data&&data.error)||('HTTP '+res.status));
+  if(!data||!Array.isArray(data.attempts)) throw new Error('Worker 回傳格式錯誤');
+  let added=0;
+  data.attempts.forEach(r=>{
+   const grade=String(r.grade==null?'':r.grade);
+   const g=gradeStatus(grade);
+   const a=mkAttempt({
+    ay:+r.ay,sem:+r.sem,type:r.type||'選',code:r.code||'',
+    dept:r.dept||'',name:r.name||'',credits:+r.credits||0,
+    grade,status:r.status||g.st,src:'sis'
+   });
+   if(r.ovr)a.ovr=r.ovr;
+   if(r.series===true||r.series===false)a.series=r.series;
+   S.attempts=S.attempts.filter(x=>!(x.ay===a.ay&&x.sem===a.sem&&x.name===a.name&&x.src==='sis'));
+   S.attempts.push(a); added++;
+  });
+  if(pwdEl)pwdEl.value='';
+  save(); tab='home'; render();
+  alert('SIS 同步完成，共匯入 '+added+' 筆課程。');
+ }catch(e){
+  msg.textContent='同步失敗：'+e.message;
+ }finally{
+  if(btn)btn.disabled=false;
+ }
+}
 
 /* ============ 匯入 ============ */
 async function pdfToLines(file){
