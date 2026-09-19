@@ -394,7 +394,6 @@ const DEMO=[
  [114,2,'必','CAT0T00009','軟創學程體育','體育',0,'95'],[114,2,'必','CCTN000001E','CT-進修部','國文',2,'62'],
  [114,2,'必','CFTN000765L','FT-進修部','外國語文(初級英文)',2,'87']
 ];
-const SYNC_STUDENT_ID='514170026';
 const SYNC_API='https://fju-sis-credit-audit.s02204-hill.workers.dev/';
 let S=load(), mode='done', tab='home', pending=[], OPEN={}, EDIT=null;
 function fresh(){return {attempts:[],map:{},nc:{mentor:0,exam:false,pa:false,pb:false,pc:false}};}
@@ -593,7 +592,8 @@ function vCourses(A){
 }
 function vImport(){
  let h='<div class="card"><h2>自動同步成績</h2>'+
-  '<div class="note">輸入密碼後即可更新歷年成績。登入資訊只用於這次同步，密碼不會儲存在瀏覽器。</div>'+
+  '<div class="note">輸入學號與密碼後即可更新歷年成績。登入資訊只用於這次同步，不會預先填入任何個人帳號。</div>'+
+  '<label>學號</label><input type="text" id="sis_uid" inputmode="numeric" autocomplete="username" placeholder="請輸入學號">'+
   '<label>密碼</label><input type="password" id="sis_pwd" autocomplete="current-password" placeholder="請輸入密碼">'+
   '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="sis_btn" onclick="sisLoginSync()">同步成績</button></div>'+
   '<div id="sis_msg" class="note"></div></div>'+
@@ -663,11 +663,11 @@ function addDept(){const v=normDept($('#newdept').value);if(!v)return;S.map[v]=S
     2) { attempts:[{ay,sem,type,code,dept,name,credits,grade,status?}] }
 */
 async function sisLoginSync(){
- const pwdEl=$('#sis_pwd'), msg=$('#sis_msg'), btn=$('#sis_btn');
- const studentId=SYNC_STUDENT_ID;
+ const uidEl=$('#sis_uid'), pwdEl=$('#sis_pwd'), msg=$('#sis_msg'), btn=$('#sis_btn');
+ const studentId=(uidEl&&uidEl.value||'').trim();
  const password=(pwdEl&&pwdEl.value||'');
  const api=SYNC_API;
- if(!password){msg.textContent='請輸入密碼。';return;}
+ if(!studentId||!password){msg.textContent='請輸入學號與密碼。';return;}
  btn.disabled=true; msg.textContent='正在同步歷年成績…';
  try{
   const res=await fetch(api,{
@@ -695,6 +695,7 @@ async function sisLoginSync(){
    S.attempts.push(a); added++;
   });
 
+  if(uidEl)uidEl.value='';
   if(pwdEl)pwdEl.value='';
   const rawPassed=data.attempts.filter(r=>r.status==='PASSED').reduce((s,r)=>s+(+r.credits||0),0);
   save(); tab='home'; render();
