@@ -480,25 +480,99 @@ function vHome(A){
  return h;
 }
 function vMissing(A){
- const g=(cls,ico,title,items)=>items.length?'<div class="grp '+cls+'"><h3>'+ico+' '+title+'</h3>'+items.join('')+'</div>':'';
+ const g=(cls,ico,title,items,desc)=>items.length?
+  '<div class="grp '+cls+'"><h3>'+ico+' '+title+'</h3>'+(desc?'<div class="note">'+desc+'</div>':'')+items.join('')+'</div>':'';
  const item=(t,sub)=>'<div class="item"><b>'+t+'</b>'+(sub?'<div class="mut">'+sub+'</div>':'')+'</div>';
  const miss=A.leaves.filter(l=>!l.ok);
- const reqItems=miss.filter(l=>['req','core','basic','choice'].includes(l.g)).map(l=>{
-  const lack=l.need-l.have; const nm=l.label.replace(/（二選一）.*/,'');
-  const why=l.why.length?l.why.join('；'):(l.g==='req'?'軟創 114 必修，目前沒有通過紀錄':'目前沒有通過紀錄');
-  const extra=l.id==='core:pe'?'（已通過 '+l.sem+' / '+l.semNeed+' 學期）':'';
-  return item(esc(nm)+' <span class="mut">缺 '+lack+' 學分'+extra+'</span>',esc(why)+(l.g==='choice'?'<br>可選：'+esc(l.label.split('：')[1]):''));
+
+ const progressText=l=>{
+  const lack=Math.max(0,l.need-l.have);
+  if(l.id==='core:pe'){
+   return '已完成大一體育 '+l.sem+' / 2 學期（0 學分）；尚需完成大二體育 2 學期（各 1 學分，共 2 學分）。';
+  }
+  if(l.have>0) return '目前已完成 '+l.have+' / '+l.need+'，尚缺 '+lack+' 學分。';
+  return '目前尚無通過紀錄。';
+ };
+
+ /* 真的「補修」：只放曾修過但未通過的必修 */
+ const retryItems=miss.filter(l=>
+   ['req','core','basic','choice'].includes(l.g) &&
+   l.state==='fail'
+ ).map(l=>{
+   const nm=l.label.replace(/（二選一）.*/,'');
+   const why=l.why.length?l.why.join('；'):'已有未通過紀錄';
+   return item(esc(nm)+' <span class="mut">缺 '+Math.max(0,l.need-l.have)+' 學分</span>',esc(why));
  });
- const eleItems=miss.filter(l=>l.g==='elec').map(l=>item(esc(l.label),'目前 '+l.have+' / '+l.need+'，至少還缺 '+(l.need-l.have)+' 學分'));
- const geItems=miss.filter(l=>l.g==='ge').map(l=>item(esc(l.label),l.id==='ge:total'?'目前 '+l.have+' / '+l.need:'目前 '+l.have+' / '+l.need+'，尚未完成'));
- const rev=A.rows.filter(r=>r.review||r.cat==='NEEDS_REVIEW').map(r=>item(esc(r.a.name)+' <span class="mut">'+semLabel(r.a.ay,r.a.sem)+'</span>',esc((r.cls.reason||'')+' '+r.notes.filter(n=>!n.startsWith('畢業採計')).join(' '))));
- const ncItems=miss.filter(l=>l.g==='nc').map(l=>item(esc(l.label),l.id==='nc:mentor'?'目前 '+l.have+' / 8 學期（請在總覽更新）':'尚未確認（請在總覽勾選）'));
- const sumItem=A.T.total<TOTAL?[item('總學分尚缺 '+(TOTAL-A.T.total)+' 學分','目前 '+A.T.total+' / '+TOTAL+'。這只是必要條件之一，不代表補滿就能畢業。')]:[];
- let h='<div class="card"><h2>畢業還缺什麼？</h2><div class="note">模式：'+(mode==='plan'?'包含規劃課程':'只看已完成')+'。已取得學分 '+A.T.total+' / '+TOTAL+'，畢業資格：'+(A.ok?'符合':'尚未符合')+'。</div>'+
-  g('r','🔴','必須補修',reqItems)+g('o','🟠','選修條件不足',eleItems.concat(sumItem))+g('y','🟡','通識條件',geItems)+g('b','🔵','非學分畢業條件',ncItems)+g('g','⚠','需要你確認的課程',rev);
+
+ /* 尚未完成：不是「補修」，可能只是還沒修到 */
+ const pendingReqItems=miss.filter(l=>
+   ['req','core','basic','choice'].includes(l.g) &&
+   l.state!=='fail'
+ ).map(l=>{
+   const lack=Math.max(0,l.need-l.have);
+   const nm=l.label.replace(/（二選一）.*/,'');
+   let sub=progressText(l);
+
+   if(l.g==='req' && l.have===0)
+     sub='114 學年度入學生必修科目，目前尚未有通過紀錄；這代表「尚未完成」，不表示曾修課不及格。';
+   if(l.g==='choice')
+     sub=progressText(l)+'<br>可選：'+esc(l.label.split('：')[1]||'');
+   if(l.id==='basic:fl')
+     sub='外國語文共需 8 學分；目前已完成 '+l.have+' / 8，尚缺 '+lack+' 學分。';
+   if(l.id==='core:life' && l.have===0)
+     sub='人生哲學共需 4 學分，目前尚未有通過紀錄。';
+   if(l.id==='core:ethics' && l.have===0)
+     sub='專業倫理共需 2 學分，目前尚未有通過紀錄。';
+
+   return item(esc(nm)+' <span class="mut">缺 '+lack+' 學分</span>',sub);
+ });
+
+ const eleItems=miss.filter(l=>l.g==='elec').map(l=>
+   item(esc(l.label),'目前 '+l.have+' / '+l.need+'，尚缺 '+Math.max(0,l.need-l.have)+' 學分。')
+ );
+
+ const geItems=miss.filter(l=>l.g==='ge').map(l=>{
+   if(l.id==='ge:total')
+     return item('通識涵養合計','目前 '+l.have+' / 10。規則為四大領域各 2 學分（共 8）＋另外 2 學分可從任一領域修讀。');
+   return item(esc(l.label),'目前 '+l.have+' / '+l.need+'，尚缺 '+Math.max(0,l.need-l.have)+' 學分。');
+ });
+
+ const rev=A.rows.filter(r=>r.review||r.cat==='NEEDS_REVIEW').map(r=>
+   item(
+     esc(r.a.name)+' <span class="mut">'+semLabel(r.a.ay,r.a.sem)+'</span>',
+     esc((r.cls.reason||'')+' '+r.notes.filter(n=>!n.startsWith('畢業採計')).join(' '))
+   )
+ );
+
+ const ncItems=miss.filter(l=>l.g==='nc').map(l=>
+   item(
+     esc(l.label),
+     l.id==='nc:mentor'
+       ?'目前 '+l.have+' / 8 學期（請在總覽更新）'
+       :'尚未確認（請在總覽勾選）'
+   )
+ );
+
+ const sumItem=A.T.total<TOTAL?[
+   item(
+     '畢業總學分尚差 '+(TOTAL-A.T.total)+' 學分',
+     '目前實際已取得 '+A.T.total+' / '+TOTAL+' 學分。這是總學分條件，仍需同時滿足各類必修、通識與選修門檻。'
+   )
+ ]:[];
+
+ let h='<div class="card"><h2>缺少項目</h2>'+
+  '<div class="note">目前實際已取得 <b>'+A.T.total+' / '+TOTAL+'</b> 學分。這一頁把「真的要重修」和「只是尚未修到」分開顯示。</div>'+
+  g('r','🔴','需要重修',retryItems,'只有曾修過但未通過的必修才會放在這裡。')+
+  g('o','🟠','必修／必選尚未完成',pendingReqItems,'尚未修習或尚未修滿，不等於不及格，也不一定是現在就要補修。')+
+  g('y','🟡','通識條件',geItems,'通識共 10 學分：四領域各 2 學分，再加任一領域自由修讀 2 學分。')+
+  g('o','🟠','選修條件不足',eleItems.concat(sumItem),'選修與總學分條件分開檢查。')+
+  g('b','🔵','非學分畢業條件',ncItems,'這些條件不會增加畢業總學分。')+
+  g('g','⚠','需要確認的課程',rev,'SIS 資料不足以自動判斷系所或分類時才會出現在這裡。');
+
  if(A.ok&&!rev.length) h+='<p class="okc">目前沒有未完成的條件 🎉</p>';
  return h+'</div>';
 }
+
 function detail(r){
  const a=r.a; const col=a.college||((S.map[normDept(a.dept)]||DEF_MAP[normDept(a.dept)]||{}).college);
  return '<div class="det"><dl><dt>原始資料</dt><dd>選別：'+esc(a.type)+'・開課系級：'+esc(a.dept)+'・學分：'+esc(a.credits)+'・成績：'+esc(a.grade||'—')+'</dd>'+
