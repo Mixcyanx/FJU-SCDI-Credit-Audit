@@ -201,13 +201,13 @@ function classify(a,S){
  if((m=BASIC.find(x=>x.re.test(nm)))) return mk('basic:'+m.k,'BASIC_COMPETENCY','課程名稱符合 114 必修科目表「基本能力課程」的「'+m.n+'」。');
  if((m=REQ.find(x=>x.n===nm))){
   if(isSoft) return mk('req:'+m.k,'DEPARTMENT_REQUIRED','課程名稱與開課單位（軟創）皆符合 114 軟創專業必修「'+m.n+'」。');
-  if(a.src==='sis'&&!dp&&a.type==='必') return mk('req:'+m.k,'DEPARTMENT_REQUIRED','SIS「學期成績查詢」未提供開課系所，但課程名稱與 114 軟創專業必修「'+m.n+'」完全一致，且 SIS 選別為「必修」，因此先採計為本學程必修。',{review:true});
+  if(a.src==='sis'&&!dp&&a.type==='必') return mk('req:'+m.k,'DEPARTMENT_REQUIRED','學校成績資料未提供開課系所，但課程名稱與 114 軟創專業必修「'+m.n+'」完全一致，且選別為「必修」，因此先採計為本學程必修。',{review:true});
   return mk(null,'NEEDS_REVIEW','課程名稱與軟創必修「'+m.n+'」相同，但開課單位為「'+(a.dept||'?')+'」。PDF 沒有規定他系同名課程可否抵認，請人工確認（可在編輯中指定採計項目）。',{review:true});
  }
  for(const g of Object.keys(CHOICE)){
   if(CHOICE[g].names.includes(nm)){
    if(isSoft) return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','屬 114 院系必選「二選一」'+CHOICE[g].label+'（'+CHOICE[g].names.join(' / ')+'），同組完成一門即滿足。');
-   if(a.src==='sis'&&!dp&&a.type==='必') return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','SIS 成績 API 未提供開課系所；課名符合院系必選'+CHOICE[g].label+'且 SIS 選別為「必修」，先採計此必選課程。',{review:true});
+   if(a.src==='sis'&&!dp&&a.type==='必') return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','學校成績資料未提供開課系所；課名符合院系必選'+CHOICE[g].label+'且選別為「必修」，先採計此必選課程。',{review:true});
    return mk(null,'NEEDS_REVIEW','課程名稱屬院系必選'+CHOICE[g].label+'，但開課單位非軟創，請人工確認。',{review:true});
   }
  }
@@ -218,7 +218,7 @@ function classify(a,S){
   else if(/自然與科技/.test(gi)) d='sci';
   else if(/社會科學/.test(gi)) d='soc';
   else if(/永續素養/.test(gi)) d='sus';
-  if(d) return mk('ge:'+d,'GENERAL_EDUCATION','SIS 成績資料的通識領域為「'+gi+'」，採計至「'+DOM.find(x=>x[0]===d)[1]+'」領域。請仍確認不在所屬系(學程)院的通識排除科目內。',{review:false});
+  if(d) return mk('ge:'+d,'GENERAL_EDUCATION','學校成績資料的通識領域為「'+gi+'」，採計至「'+DOM.find(x=>x[0]===d)[1]+'」領域。請仍確認不在所屬系(學程)院的通識排除科目內。',{review:false});
   if(/永續/.test(nm+dp)){d='sus';auto=true;}
   if(d) return mk('ge:'+d,'GENERAL_EDUCATION','選別為「通」，課程名稱／開課單位含「永續」，推定屬「永續素養」領域。'+(auto?'領域為推定值，請確認；另請確認不在所屬系(學程)院的通識排除科目內。':''),{review:auto});
   return mk(null,'GENERAL_EDUCATION','選別為「通」，但無法判斷所屬通識領域（人文與藝術／自然與科技／社會科學／永續素養）。請在編輯中指定採計項目。',{review:true});
@@ -394,6 +394,8 @@ const DEMO=[
  [114,2,'必','CAT0T00009','軟創學程體育','體育',0,'95'],[114,2,'必','CCTN000001E','CT-進修部','國文',2,'62'],
  [114,2,'必','CFTN000765L','FT-進修部','外國語文(初級英文)',2,'87']
 ];
+const SYNC_STUDENT_ID='514170026';
+const SYNC_API='https://fju-sis-credit-audit.s02204-hill.workers.dev/';
 let S=load(), mode='done', tab='home', pending=[], OPEN={}, EDIT=null;
 function fresh(){return {attempts:[],map:{},nc:{mentor:0,exam:false,pa:false,pb:false,pc:false}};}
 function load(){try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(j&&j.attempts)return Object.assign(fresh(),j);}catch(e){}return fresh();}
@@ -425,7 +427,7 @@ function vHome(A){
  let h='';
 
  if(!S.attempts.length){
-  h+='<div class="card"><h2>還沒有修課資料</h2><p class="mut">到「同步」登入輔大 SIS 自動抓取歷年成績，或按右下角「＋課程」手動新增。</p><button class="btn pri" onclick="go(\'import\')">前往 SIS 同步</button></div>';
+  h+='<div class="card"><h2>還沒有修課資料</h2><p class="mut">到「同步」輸入密碼即可自動抓取歷年成績，或按右下角「＋課程」手動新增。</p><button class="btn pri" onclick="go(\'import\')">前往同步</button></div>';
  }
 
  h+='<div class="card hero '+(T.total>=TOTAL?'good':'')+'">'+
@@ -567,7 +569,7 @@ function vMissing(A){
   g('y','🟡','通識條件',geItems,'通識共 10 學分：四領域各 2 學分，再加任一領域自由修讀 2 學分。')+
   g('o','🟠','選修條件不足',eleItems.concat(sumItem),'選修與總學分條件分開檢查。')+
   g('b','🔵','非學分畢業條件',ncItems,'這些條件不會增加畢業總學分。')+
-  g('g','⚠','需要確認的課程',rev,'SIS 資料不足以自動判斷系所或分類時才會出現在這裡。');
+  g('g','⚠','需要確認的課程',rev,'學校資料不足以自動判斷系所或分類時才會出現在這裡。');
 
  if(A.ok&&!rev.length) h+='<p class="okc">目前沒有未完成的條件 🎉</p>';
  return h+'</div>';
@@ -590,16 +592,13 @@ function vCourses(A){
    return '<div class="crs" onclick="tg(\''+a.id+'\')"><div class="cl"><b>'+esc(a.name)+'</b><small>'+esc(a.code)+'・'+esc(a.dept)+'・'+esc(a.credits)+' 學分・'+esc(a.status==='PLANNED'?'規劃中':a.grade)+'</small></div>'+catChip(r)+'</div>'+(OPEN[a.id]?detail(r):'');}).join('')+'</div>';}).join('');
 }
 function vImport(){
- let h='<div class="card"><h2>從輔大 SIS 自動同步</h2>'+
-  '<div class="note">在這裡手動輸入 LDAP 學號與密碼，系統會把登入資料送到你設定的「SIS 同步橋接 API」，由 Cloudflare Worker 呼叫輔大實際的 LDAP 登入 API，再讀取「學期成績查詢」資料。密碼不會寫入 localStorage；同步完成後密碼欄會立即清空。</div>'+
-  '<label>學號</label><input type="text" id="sis_uid" inputmode="numeric" autocomplete="username" placeholder="例如：514170026">'+
-  '<label>密碼</label><input type="password" id="sis_pwd" autocomplete="current-password" placeholder="請輸入 LDAP 密碼">'+
-  '<label>SIS 同步橋接 API</label><input type="url" id="sis_api" value="'+esc(localStorage.getItem("fju-sis-api")||"")+'" placeholder="例如：https://你的-worker.workers.dev/sis-sync">'+
-  '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="sis_btn" onclick="sisLoginSync()">登入並自動擷取</button><button class="btn" onclick="window.open(\'https://sis.fju.edu.tw/#/\',\'_blank\',\'noopener\')">開啟輔大 SIS</button></div>'+
+ let h='<div class="card"><h2>自動同步成績</h2>'+
+  '<div class="note">輸入密碼後即可更新歷年成績。登入資訊只用於這次同步，密碼不會儲存在瀏覽器。</div>'+
+  '<label>密碼</label><input type="password" id="sis_pwd" autocomplete="current-password" placeholder="請輸入密碼">'+
+  '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="sis_btn" onclick="sisLoginSync()">同步成績</button></div>'+
   '<div id="sis_msg" class="note"></div></div>'+
   '<details class="card"><summary style="cursor:pointer;font-weight:700">備用：匯入成績單 PDF</summary><div class="drop" style="margin-top:10px"><p style="margin:0 0 8px">選擇一份或多份「輔仁大學學生學期成績單」PDF（可一次多學期）</p><input type="file" id="fi" accept="application/pdf" multiple onchange="handleFiles(this.files)"></div><div class="note">PDF 只在你的瀏覽器內解析，不會上傳到任何伺服器。解析後需要你確認才會加入計算。</div>'+
-  '<details><summary class="mut" style="cursor:pointer">PDF 解析失敗？貼上成績單文字</summary><textarea id="pt" placeholder="從成績單複製文字後貼上"></textarea><button class="btn sm" onclick="handleText()">解析貼上的文字</button></details><div id="imsg" class="note"></div></details>';
- pending.forEach((p,pi)=>{
+  '<details><summary class="mut" style="cursor:pointer">PDF 解析失敗？貼上成績單文字</summary><textarea id="pt" placeholder="從成績單複製文字後貼上"></textarea><button class="btn sm" onclick="handleText()">解析貼上的文字</button></details><div id="imsg" class="note"></div></details>'; pending.forEach((p,pi)=>{
   const chk=p.chk; 
   h+='<div class="card"><h3>'+esc(p.name)+'</h3><div class="g2"><div><label>學年度</label><input type="number" value="'+(p.ay||'')+'" onchange="pendSem('+pi+',\'ay\',this.value)"></div><div><label>學期</label><input type="number" value="'+(p.sem||'')+'" onchange="pendSem('+pi+',\'sem\',this.value)"></div></div>'+
    (chk?'<div class="note">'+chk+'</div>':'')+(p.unmatched.length?'<div class="note" style="color:var(--warn)">有 '+p.unmatched.length+' 行無法解析，請手動新增：<br>'+p.unmatched.map(esc).join('<br>')+'</div>':'')+
@@ -636,7 +635,7 @@ function render(){
  const A=audit(S,mode);
  const showMode=tab==='home'||tab==='missing';
  const body=tab==='home'?vHome(A):tab==='missing'?vMissing(A):tab==='courses'?vCourses(A):tab==='import'?vImport():vSettings();
- const tabs=[['home','總覽'],['missing','缺少項目'],['courses','課程'],['import','同步'],['settings','設定']];
+ const tabs=[['home','總覽'],['missing','缺少項目'],['courses','課程'],['import','更新'],['settings','設定']];
  $('#app').innerHTML='<div class="top"><h1>軟創 114 畢業學分健檢</h1>'+(showMode?'<div class="seg"><button class="'+(mode==='done'?'on':'')+'" onclick="setMode(\'done\')">只看已完成</button><button class="'+(mode==='plan'?'on':'')+'" onclick="setMode(\'plan\')">含規劃課程</button></div>':'')+'</div>'+body+
   '<button class="btn pri fab" onclick="addAttempt()">＋課程</button><div class="nav"><div>'+tabs.map(t=>'<button class="'+(tab===t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+(t[0]==='missing'&&A.leaves.filter(l=>!l.ok).length?' '+A.leaves.filter(l=>!l.ok).length:'')+'</button>').join('')+'</div></div>';
 }
@@ -664,14 +663,12 @@ function addDept(){const v=normDept($('#newdept').value);if(!v)return;S.map[v]=S
     2) { attempts:[{ay,sem,type,code,dept,name,credits,grade,status?}] }
 */
 async function sisLoginSync(){
- const uidEl=$('#sis_uid'), pwdEl=$('#sis_pwd'), apiEl=$('#sis_api'), msg=$('#sis_msg'), btn=$('#sis_btn');
- const studentId=(uidEl&&uidEl.value||'').trim();
+ const pwdEl=$('#sis_pwd'), msg=$('#sis_msg'), btn=$('#sis_btn');
+ const studentId=SYNC_STUDENT_ID;
  const password=(pwdEl&&pwdEl.value||'');
- const api=(apiEl&&apiEl.value||'').trim();
- if(!studentId||!password){msg.textContent='請輸入學號與 LDAP 密碼。';return;}
- if(!api){msg.textContent='請先填入你部署完成的 Cloudflare Worker 網址。';return;}
- localStorage.setItem('fju-sis-api',api);
- btn.disabled=true; msg.textContent='正在登入輔大 SIS 並讀取歷年成績…';
+ const api=SYNC_API;
+ if(!password){msg.textContent='請輸入密碼。';return;}
+ btn.disabled=true; msg.textContent='正在同步歷年成績…';
  try{
   const res=await fetch(api,{
    method:'POST',
@@ -681,7 +678,8 @@ async function sisLoginSync(){
   let data=null;
   try{data=await res.json();}catch(_){}
   if(!res.ok) throw new Error((data&&data.error)||('HTTP '+res.status));
-  if(!data||!Array.isArray(data.attempts)) throw new Error('Worker 回傳格式錯誤');
+  if(!data||!Array.isArray(data.attempts)) throw new Error('同步資料格式錯誤');
+
   let added=0;
   data.attempts.forEach(r=>{
    const grade=String(r.grade==null?'':r.grade);
@@ -696,12 +694,13 @@ async function sisLoginSync(){
    S.attempts=S.attempts.filter(x=>!(x.ay===a.ay&&x.sem===a.sem&&x.name===a.name&&x.src==='sis'));
    S.attempts.push(a); added++;
   });
+
   if(pwdEl)pwdEl.value='';
   const rawPassed=data.attempts.filter(r=>r.status==='PASSED').reduce((s,r)=>s+(+r.credits||0),0);
   save(); tab='home'; render();
-  alert('SIS 同步完成，共匯入 '+added+' 筆課程；SIS 原始已通過學分合計 '+rawPassed+'。');
+  alert('同步完成，共更新 '+added+' 筆課程；目前已通過學分合計 '+rawPassed+'。');
  }catch(e){
-  msg.textContent='同步失敗：'+e.message;
+  msg.textContent='同步失敗：'+e.message.replace(/^SIS 同步失敗：?/,'');
  }finally{
   if(btn)btn.disabled=false;
  }
