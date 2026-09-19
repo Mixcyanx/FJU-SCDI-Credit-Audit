@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>軟創 114 畢業學分健檢系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--ink:#16202c;--mute:#5d6b7b;--line:#dde3e9;--brand:#0f5c7a;--brand-ink:#fff;--ok:#1b7f55;--okbg:#e2f4ec;--bad:#b3261e;--badbg:#fbe7e5;--warn:#a25b00;--warnbg:#fdf0d9;--info:#2456a6;--infobg:#e4edfb;--grey:#5d6b7b;--greybg:#eceff2}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161d;--card:#18212b;--ink:#e8edf2;--mute:#98a6b5;--line:#2a3542;--brand:#5bb6d6;--brand-ink:#08222d;--ok:#5fd0a0;--okbg:#153428;--bad:#ff8f86;--badbg:#3a1a18;--warn:#f2b558;--warnbg:#3a2a10;--info:#8db4f5;--infobg:#172a48;--grey:#98a6b5;--greybg:#222d39}}
+:root[data-theme="dark"]{--bg:#10161d;--card:#18212b;--ink:#e8edf2;--mute:#98a6b5;--line:#2a3542;--brand:#5bb6d6;--brand-ink:#08222d;--ok:#5fd0a0;--okbg:#153428;--bad:#ff8f86;--badbg:#3a1a18;--warn:#f2b558;--warnbg:#3a2a10;--info:#8db4f5;--infobg:#172a48;--grey:#98a6b5;--greybg:#222d39}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;font-size:15px;line-height:1.55}
+#app{max-width:760px;margin:0 auto;padding:0 12px 96px}
+button,input,select,textarea{font:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
+.top h1{font-size:15px;margin:0;font-weight:700}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:none;padding:6px 10px;font-size:13px;cursor:pointer;color:var(--mute)}
+.seg button.on{background:var(--brand);color:var(--brand-ink);font-weight:500}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
+.card h2,.card h3{margin:0 0 8px;font-size:15px}
+.hero{border-left:6px solid var(--bad)}
+.hero.good{border-left-color:var(--ok)}
+.big{font-size:44px;font-weight:700;letter-spacing:-1px;line-height:1.1}
+.big small{font-size:18px;color:var(--mute);font-weight:400;letter-spacing:0}
+.bar{height:8px;background:var(--greybg);border-radius:4px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;background:var(--brand)}
+.bar.ok i{background:var(--ok)}
+.rl{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.okc{color:var(--ok);font-weight:500}
+.row{margin:10px 0}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:500;background:var(--greybg);color:var(--grey)}
+.pill.ok{background:var(--okbg);color:var(--ok)}.pill.bad{background:var(--badbg);color:var(--bad)}.pill.warn{background:var(--warnbg);color:var(--warn)}.pill.info{background:var(--infobg);color:var(--info)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini{background:var(--greybg);border-radius:8px;padding:8px 10px;font-size:13px}
+.mini b{display:block;font-size:20px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chip{font-size:12.5px;padding:2px 8px;border-radius:6px;background:var(--greybg);color:var(--grey);white-space:nowrap}
+.chip.ok{background:var(--okbg);color:var(--ok)}.chip.fail{background:var(--badbg);color:var(--bad)}.chip.warn{background:var(--warnbg);color:var(--warn)}.chip.info{background:var(--infobg);color:var(--info)}
+.mut{color:var(--mute);font-size:13px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:6}
+.nav div{display:flex;max-width:760px;width:100%}
+.nav button{flex:1;border:0;background:none;padding:10px 2px 12px;font-size:12.5px;color:var(--mute);cursor:pointer}
+.nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--brand)}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:14px}
+.btn.pri{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:500}
+.btn.dng{color:var(--bad)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.fab{position:fixed;right:16px;bottom:70px;z-index:7;border-radius:999px;padding:12px 18px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.crs{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+.crs:first-of-type{border-top:0}
+.cl b{display:block;font-size:14.5px}.cl small{color:var(--mute);font-size:12.5px}
+.det{background:var(--greybg);border-radius:8px;padding:10px;margin:0 0 8px;font-size:13.5px}
+.det dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0 0 8px}.det dt{color:var(--mute)}.det dd{margin:0}
+.grp{border-left:5px solid var(--line);padding-left:10px;margin:14px 0}
+.grp.r{border-color:var(--bad)}.grp.o{border-color:#e08a1e}.grp.y{border-color:#d8b600}.grp.b{border-color:var(--info)}.grp.g{border-color:var(--grey)}
+.grp h3{margin:0 0 4px;font-size:15px}
+.item{padding:7px 0;border-top:1px dashed var(--line)}.item:first-of-type{border-top:0}
+.item b{font-size:14.5px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:5px 4px;text-align:left;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:500}
+tr.rev td{background:var(--warnbg)}
+.scroll{overflow-x:auto}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(560px,94vw);padding:16px;max-height:90vh}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+label{display:block;font-size:13px;color:var(--mute);margin:8px 0 2px}
+input[type=text],input[type=number],select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+textarea{min-height:90px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center}
+.note{font-size:13px;color:var(--mute);margin:6px 0}
+ul.tight{margin:4px 0;padding-left:20px}ul.tight li{margin:3px 0}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<dialog id="dlg"></dialog>
+<script>
+'use strict';
+/*CORE_START*/
+/* ============ 規則資料（來源：114 學年度必修科目表、軟創 114 修業規則） ============ */
+const TOTAL = 128;
+const REQ = [
+ ['pd1','程式設計(一)',3],['color','色彩學',3],['cs','計算機概論',3],['dt','創意設計思考與方法',2],
+ ['os','作業系統概論',3],['dm','離散數學',3],['sketch','創意素描',3],['pd2','程式設計(二)',3],
+ ['oop','物件導向程式設計',3],['anim','電腦動畫製作',3],['vcd','視覺傳達設計',3],['db','資料庫系統',3],
+ ['web','多媒體網頁設計',3],['ds','資料結構',3],['sad','系統分析與設計',3],['self','自主學習',1],
+ ['p1','專題(一)',1],['hci','人機介面與互動設計',3],['nsp','網路服務程式設計',3],['net','計算機網路',3],
+ ['p2','專題(二)',2],['exam','程式實作能力檢定',1],['p3','專題(三)',2]
+].map(([k,n,c])=>({k,n,c}));
+const CHOICE = {
+ A:{label:'第一組',names:['行動軟體設計與開發','行動App程式設計']},
+ B:{label:'第二組',names:['互動控制程式設計','多媒體互動設計']}
+};
+const CORE = [
+ {k:'orient',n:'大學入門',c:2,re:/^大學入門/},
+ {k:'life',n:'人生哲學',c:4,re:/人生哲學/},
+ {k:'ethics',n:'專業倫理-科技倫理',c:2,re:/專業倫理|科技倫理/},
+ {k:'pe',n:'體育',c:2,re:/^體育/,sem:4}
+];
+const BASIC = [
+ {k:'zh',n:'國文',c:4,re:/^國文/},
+ {k:'fl',n:'外國語文',c:8,re:/^外國語文/}
+];
+const DOM = [['hum','人文與藝術'],['sci','自然與科技'],['soc','社會科學'],['sus','永續素養']];
+const TARGET_COLLEGES = ['理工學院','傳播學院','藝術學院'];
+const SERIES_RE = /^(體育|國文|外國語文)/;
+const DEF_MAP = {
+ '軟創學程':{college:'理工學院',ok:true,src:'必修科目表表頭：院別 理工學院／系別 軟創'},
+ '應美':{college:'藝術學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '音樂':{college:'藝術學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '景觀':{college:'藝術學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '新傳':{college:'傳播學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '影傳':{college:'傳播學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '廣傳':{college:'傳播學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '資工':{college:'理工學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '電機':{college:'理工學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '數學':{college:'理工學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '物理':{college:'理工學院',ok:false,src:'建議值（PDF 未提供，請確認）'},
+ '化學':{college:'理工學院',ok:false,src:'建議值（PDF 未提供，請確認）'}
+};
+const CAT_LABEL = {GENERAL_EDUCATION_CORE:'全人核心',BASIC_COMPETENCY:'基本能力',GENERAL_EDUCATION:'通識涵養',DEPARTMENT_REQUIRED:'軟創專業必修',DEPARTMENT_REQUIRED_ELECTIVE:'院系必選',DEPARTMENT_ELECTIVE:'軟創系內選修',EXTERNAL_ELECTIVE_ELIGIBLE_COLLEGE:'系外選修・指定學院',EXTERNAL_ELECTIVE_OTHER:'系外選修・其他',FAILED:'不及格',NOT_COUNTED:'未採計',NEEDS_REVIEW:'待確認'};
+const STATUS_LABEL = {PASSED:'已通過',FAILED:'不及格',PLANNED:'規劃中',WITHDRAWN:'停修',UNGRADED:'未評定',NOT_COUNTED:'不予計分',NEEDS_REVIEW:'待確認'};
+
+function normName(s){return String(s||'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/[-－](網|遠)$/,'');}
+function normDept(s){return String(s||'').replace(/\s+/g,'').replace(/[一二三四五六七八九]+$/,'').replace(/[甲乙丙丁]$/,'');}
+function bucketCat(b){
+ if(!b||b==='none') return 'NOT_COUNTED';
+ if(b.startsWith('core:')) return 'GENERAL_EDUCATION_CORE';
+ if(b.startsWith('basic:')) return 'BASIC_COMPETENCY';
+ if(b.startsWith('ge:')) return 'GENERAL_EDUCATION';
+ if(b.startsWith('req:')) return 'DEPARTMENT_REQUIRED';
+ if(b.startsWith('choice:')) return 'DEPARTMENT_REQUIRED_ELECTIVE';
+ if(b==='elec:dept') return 'DEPARTMENT_ELECTIVE';
+ if(b==='ext:col') return 'EXTERNAL_ELECTIVE_ELIGIBLE_COLLEGE';
+ return 'EXTERNAL_ELECTIVE_OTHER';
+}
+function bucketName(b){
+ if(b.startsWith('core:')) return CORE.find(x=>x.k===b.slice(5)).n;
+ if(b.startsWith('basic:')) return BASIC.find(x=>x.k===b.slice(6)).n;
+ if(b.startsWith('ge:')) return '通識・'+DOM.find(x=>x[0]===b.slice(3))[1];
+ if(b.startsWith('req:')) return REQ.find(x=>x.k===b.slice(4)).n;
+ if(b.startsWith('choice:')) return '院系必選'+CHOICE[b.slice(7)].label;
+ return {'elec:dept':'軟創系內專業選修','ext:col':'系外選修・指定學院','ext:other':'系外選修・其他',none:'不採計'}[b]||b;
+}
+
+/* 成績註記（成績單備註：P 未評定、@ 期末考請假、W 停修、＊ 不及格、$ 扣考、I 論文/臨床實習未完成、Y 通過、F 不通過、X/x 不予評分/不核予成績） */
+function gradeStatus(raw){
+ const g=String(raw||'').trim();
+ if(!g) return {st:'NEEDS_REVIEW',why:'成績空白'};
+ if(/[*＊]/.test(g)) return {st:'FAILED',why:'成績單以 * 標示不及格'};
+ if(/\$/.test(g)) return {st:'FAILED',why:'成績單以 $ 標示扣考'};
+ if(/^\d+(\.\d+)?$/.test(g)){
+  return parseFloat(g)>=60?{st:'PASSED'}:{st:'FAILED',why:'低於 60 分且未標 *，依分數推定不及格，請確認'};
+ }
+ const m={P:['UNGRADED','P：未評定成績'],Y:['PASSED','Y：通過'],F:['FAILED','F：不通過'],W:['WITHDRAWN','W：停修'],X:['NOT_COUNTED','X：因故不予評分'],x:['NOT_COUNTED','x：因故不核予成績'],'@':['NEEDS_REVIEW','@：期末考請假'],I:['NEEDS_REVIEW','I：論文／實習未完成']}[g.replace(/[\d.\s]/g,'')[0]];
+ return m?{st:m[0],why:m[1]}:{st:'NEEDS_REVIEW',why:'無法辨識的成績「'+g+'」'};
+}
+
+/* ============ 課程分類 ============ */
+function classify(a,S){
+ const nm=normName(a.name), dp=normDept(a.dept);
+ const isSoft=/軟創|軟體工程與數位創意/.test(dp);
+ const mk=(bucket,cat,reason,extra)=>Object.assign({bucket,cat:cat||bucketCat(bucket),reason,review:false},extra||{});
+ if(a.ovr) return mk(a.ovr==='none'?null:a.ovr,null,'使用者手動指定採計項目：'+bucketName(a.ovr)+'。');
+ let m;
+ if((m=CORE.find(x=>x.re.test(nm)))) return mk('core:'+m.k,'GENERAL_EDUCATION_CORE','課程名稱符合 114 必修科目表「全人教育核心課程」的「'+m.n+'」。分類依規則表，不依成績單「'+(a.type||'?')+'」欄。');
+ if((m=BASIC.find(x=>x.re.test(nm)))) return mk('basic:'+m.k,'BASIC_COMPETENCY','課程名稱符合 114 必修科目表「基本能力課程」的「'+m.n+'」。');
+ if((m=REQ.find(x=>x.n===nm))){
+  if(isSoft) return mk('req:'+m.k,'DEPARTMENT_REQUIRED','課程名稱與開課單位（軟創）皆符合 114 軟創專業必修「'+m.n+'」。');
+  return mk(null,'NEEDS_REVIEW','課程名稱與軟創必修「'+m.n+'」相同，但開課單位為「'+(a.dept||'?')+'」。PDF 沒有規定他系同名課程可否抵認，請人工確認（可在編輯中指定採計項目）。',{review:true});
+ }
+ for(const g of Object.keys(CHOICE)){
+  if(CHOICE[g].names.includes(nm)){
+   if(isSoft) return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','屬 114 院系必選「二選一」'+CHOICE[g].label+'（'+CHOICE[g].names.join(' / ')+'），同組完成一門即滿足。');
+   return mk(null,'NEEDS_REVIEW','課程名稱屬院系必選'+CHOICE[g].label+'，但開課單位非軟創，請人工確認。',{review:true});
+  }
+ }
+ if(a.type==='通'||/通識/.test(dp)){
+  let d=null,auto=false;
+  if(/永續/.test(nm+dp)){d='sus';auto=true;}
+  if(d) return mk('ge:'+d,'GENERAL_EDUCATION','選別為「通」，課程名稱／開課單位含「永續」，推定屬「永續素養」領域。'+(auto?'領域為推定值，請確認；另請確認不在所屬系(學程)院的通識排除科目內。':''),{review:auto});
+  return mk(null,'GENERAL_EDUCATION','選別為「通」，但無法判斷所屬通識領域（人文與藝術／自然與科技／社會科學／永續素養）。請在編輯中指定採計項目。',{review:true});
+ }
+ if(isSoft){
+  if(a.type==='選') return mk('elec:dept','DEPARTMENT_ELECTIVE','軟創學程開設、非必修科目表所列課程，屬本學程開設之專業選修。');
+  return mk(null,'NEEDS_REVIEW','軟創開設的「'+(a.type||'?')+'」課程，但不在 114 必修科目表中，請人工確認（可能是舊制課程）。',{review:true});
+ }
+ const e=(S.map&&S.map[dp])||DEF_MAP[dp];
+ const col=a.college||(e&&e.college); const ok=!!a.college||!!(e&&e.ok);
+ if(ok&&TARGET_COLLEGES.includes(col)) return mk('ext:col','EXTERNAL_ELECTIVE_ELIGIBLE_COLLEGE','非軟創 114 必修，開課單位「'+dp+'」屬'+col+'（已確認），列為系外選修並計入「理工／傳播／藝術學院至少 9 學分」。不依成績單「'+(a.type||'?')+'」欄判定為軟創必修。');
+ if(ok) return mk('ext:other','EXTERNAL_ELECTIVE_OTHER','非軟創 114 必修，開課單位「'+dp+'」屬'+col+'（非指定學院），列為一般系外選修。');
+ return mk('ext:other','EXTERNAL_ELECTIVE_OTHER','非軟創 114 必修，開課單位「'+(dp||'?')+'」，列為系外選修。'+(e&&e.college?'建議學院為'+e.college+'，但尚未確認，':'學院對照資料尚未建立，')+'暫不計入「指定學院 9 學分」。請到「設定」確認學院對照。不依成績單「'+(a.type||'?')+'」欄判定為軟創必修。',{review:true,needCollege:true});
+}
+
+/* ============ 畢業規則引擎 ============ */
+function audit(S,mode){
+ const list=[...S.attempts].sort((x,y)=>(x.ay-y.ay)||(x.sem-y.sem));
+ const used={}, geBase={hum:0,sci:0,soc:0,sus:0}; let geExtra=0, geOver=0, peSem=0;
+ const rows=[], passed=[];
+ const cap=b=>{
+  if(b.startsWith('core:')) return CORE.find(x=>x.k===b.slice(5)).c;
+  if(b.startsWith('basic:')) return BASIC.find(x=>x.k===b.slice(6)).c;
+  if(b.startsWith('req:')) return REQ.find(x=>x.k===b.slice(4)).c;
+  if(b.startsWith('choice:')) return 3;
+  return Infinity;
+ };
+ for(const a of list){
+  const cls=classify(a,S);
+  const row={a,cls,cat:cls.cat,bk:cls.bucket,counted:0,notes:[],review:!!cls.review,planned:false};
+  rows.push(row);
+  let st=a.status||'NEEDS_REVIEW';
+  if(st==='PLANNED'){
+   if(mode==='plan'){st='PASSED';row.planned=true;row.notes.push('規劃中課程：目前為「包含規劃課程」模式，視為已通過。');}
+   else{row.cat='NOT_COUNTED';row.notes.push('規劃中課程：目前為「只看已完成」模式，不採計。');continue;}
+  }
+  if(st==='FAILED'){row.cat='FAILED';row.notes.push('不及格：不計入取得學分、不計入必修完成；修課紀錄保留。');continue;}
+  if(st!=='PASSED'){row.cat=st==='NEEDS_REVIEW'?'NEEDS_REVIEW':'NOT_COUNTED';row.review=st==='NEEDS_REVIEW';row.notes.push('修課狀態為「'+(STATUS_LABEL[st]||st)+'」，不採計。');continue;}
+  const nm=normName(a.name), code=String(a.code||'').toUpperCase();
+  if(a.ovr!=='none'||true){
+   const prevSame=code?passed.filter(p=>String(p.a.code||'').toUpperCase()===code):[];
+   if(prevSame.length){
+    const last=prevSame[prevSame.length-1];
+    const seriesAuto=SERIES_RE.test(nm)||(last.a.ay===a.ay&&last.a.sem===1&&a.sem===2);
+    const series=a.series===true||(a.series!==false&&seriesAuto);
+    if(!series){row.cat='NOT_COUNTED';row.dup=true;row.notes.push('同一課程代碼已於 '+last.a.ay+'-'+last.a.sem+' 通過，不重複採計畢業學分。若這是分學期連續修習的課程，請在編輯中將「連續學期課程」設為「是」。');continue;}
+    row.notes.push(a.series===true?'使用者標示為連續學期課程，各學期分別採計。':'同代碼於連續學期修習，視為學年課程，各學期分別採計（可在編輯中改為「否」）。');
+    if(!SERIES_RE.test(nm)) row.review=true;
+   } else if(!SERIES_RE.test(nm)){
+    const prevName=passed.filter(p=>normName(p.a.name)===nm&&String(p.a.code||'').toUpperCase()!==code);
+    if(prevName.length&&a.series!==true){row.cat='NEEDS_REVIEW';row.review=true;row.notes.push('課程名稱與已通過的「'+prevName[0].a.name+'」（'+prevName[0].a.code+'）相同但代碼不同：可能是改名、代碼異動或重複修習。未武斷合併，暫不採計，請確認。');continue;}
+   }
+  }
+  let b=cls.bucket;
+  if(!b){
+   row.notes.push(cls.cat==='GENERAL_EDUCATION'?'尚未指定通識領域，暫不採計。':'尚待人工確認，暫不採計。');
+   if(cls.cat==='GENERAL_EDUCATION'||cls.cat==='NEEDS_REVIEW') row.cat=cls.cat==='GENERAL_EDUCATION'?'NEEDS_REVIEW':'NEEDS_REVIEW';
+   else row.cat='NOT_COUNTED';
+   passed.push(row);
+   continue;
+  }
+  const cr=+a.credits||0; let cnt=0;
+  if(b.startsWith('ge:')){
+   const d=b.slice(3); const x=Math.min(cr,2-geBase[d]); geBase[d]+=Math.max(0,x);
+   const y=Math.min(cr-Math.max(0,x),2-geExtra); geExtra+=Math.max(0,y); cnt=Math.max(0,x)+Math.max(0,y);
+   if(cnt<cr){geOver+=cr-cnt;row.notes.push('通識已達 10 學分（四領域各 2＋另 2 學分），超出 '+(cr-cnt)+' 學分暫不採計。PDF 未說明超修通識可否作選修，請確認。');}
+   used[b]=(used[b]||0)+cnt;
+  } else {
+   if(b.startsWith('choice:')&&(used[b]||0)>=3){
+    if(/軟創/.test(dp)){b='elec:dept';row.bk=b;row.cat='DEPARTMENT_ELECTIVE';row.review=true;row.notes.push('該組二選一已完成，多修的一門暫列軟創系內專業選修（PDF 未明確規定，請確認）。');}
+   }
+   const room=cap(b)-(used[b]||0);
+   cnt=Math.max(0,Math.min(cr,room));
+   used[b]=(used[b]||0)+cnt;
+   if(cnt<cr) row.notes.push('此項目所需學分已滿，超出 '+(cr-cnt)+' 學分不採計。');
+   if(b==='core:pe') peSem++;
+  }
+  row.counted=cnt;
+  if(cr===0) row.notes.push('0 學分課程：不增加總學分，但仍計入該項目的完成（如體育大一 0 學分）。');
+  else if(cnt===0){row.cat='NOT_COUNTED';}
+  row.notes.push('畢業採計 '+cnt+' 學分（'+bucketName(b)+'）。');
+  if(b==='ext:col') row.notes.push('指定學院 9 學分條件：+'+cnt+'。');
+  passed.push(row);
+ }
+ for(const r of rows){
+  if(r.cat!=='FAILED') continue;
+  const later=rows.find(x=>x!==r&&(x.a.ay>r.a.ay||(x.a.ay===r.a.ay&&x.a.sem>r.a.sem))&&x.counted>=0&&passed.includes(x)&&(String(x.a.code||'').toUpperCase()===String(r.a.code||'').toUpperCase()));
+  if(later) r.notes.push('已於 '+later.a.ay+'-'+later.a.sem+' 重修通過。');
+ }
+ /* ---- 條件清單 ---- */
+ const U=b=>used[b]||0;
+ const T={};
+ T.core=CORE.reduce((s,x)=>s+U('core:'+x.k),0);
+ T.basic=BASIC.reduce((s,x)=>s+U('basic:'+x.k),0);
+ T.ge=DOM.reduce((s,d)=>s+geBase[d[0]],0)+geExtra;
+ T.req=REQ.reduce((s,x)=>s+U('req:'+x.k),0);
+ T.choice=U('choice:A')+U('choice:B');
+ T.dept=U('elec:dept'); T.extCol=U('ext:col'); T.extOther=U('ext:other'); T.ext=T.extCol+T.extOther;
+ T.elec=T.dept+T.ext;
+ T.total=T.core+T.basic+T.ge+T.req+T.choice+T.elec;
+ const leaves=[]; const L=(g,id,label,have,need,ok,bk,extra)=>leaves.push(Object.assign({g,id,label,have,need,ok,bk},extra||{}));
+ CORE.forEach(x=>{const h=U('core:'+x.k);L('core','core:'+x.k,x.n,h,x.c,x.k==='pe'?(h>=x.c&&peSem>=x.sem):h>=x.c,'core:'+x.k,x.k==='pe'?{sem:peSem,semNeed:x.sem}:{});});
+ BASIC.forEach(x=>L('basic','basic:'+x.k,x.n,U('basic:'+x.k),x.c,U('basic:'+x.k)>=x.c,'basic:'+x.k));
+ DOM.forEach(d=>L('ge','ge:'+d[0],'通識・'+d[1]+'領域',geBase[d[0]],2,geBase[d[0]]>=2,'ge:'+d[0]));
+ L('ge','ge:total','通識涵養合計',T.ge,10,T.ge>=10,'ge:total');
+ REQ.forEach(x=>L('req','req:'+x.k,x.n,U('req:'+x.k),x.c,U('req:'+x.k)>=x.c,'req:'+x.k));
+ Object.keys(CHOICE).forEach(g=>L('choice','choice:'+g,'院系必選'+CHOICE[g].label+'（二選一）：'+CHOICE[g].names.join(' / '),U('choice:'+g),3,U('choice:'+g)>=3,'choice:'+g));
+ L('elec','elec:total','選修合計',T.elec,30,T.elec>=30,'elec:total');
+ L('elec','elec:dept','軟創系內專業選修',T.dept,14,T.dept>=14,'elec:dept');
+ L('elec','ext:col','系外選修中理工／傳播／藝術學院各系所之必修或選修',T.extCol,9,T.extCol>=9,'ext:col');
+ const nc=S.nc||{};
+ const examCourse=U('req:exam')>=1;
+ L('nc','nc:exam','程式實作能力檢定（資訊基本能力畢業門檻）',(examCourse||nc.exam)?1:0,1,!!(examCourse||nc.exam),null,{manual:true,auto:examCourse});
+ L('nc','nc:path','第三條畢業資格（三選一：競賽參加≥2次／決賽或獲獎≥1次／產學合作≥1項）',(nc.pa||nc.pb||nc.pc)?1:0,1,!!(nc.pa||nc.pb||nc.pc),null,{manual:true});
+ L('nc','nc:mentor','校訂必修：導師時間（0 學分，共 8 學期）',+nc.mentor||0,8,(+nc.mentor||0)>=8,null,{manual:true});
+ L('sum','total','畢業總學分（五類合計）',T.total,TOTAL,T.total>=TOTAL,'total');
+ const reasonFor=bk=>{
+  const out=[];
+  rows.filter(r=>r.bk===bk).forEach(r=>{
+   if(r.cat==='FAILED') out.push(r.a.ay+'-'+r.a.sem+' 修習「'+r.a.name+'」未通過（成績 '+r.a.grade+'）');
+   else if(r.a.status==='PLANNED'&&!r.planned) out.push('已規劃於 '+r.a.ay+'-'+r.a.sem+'，尚未修畢');
+   else if(r.cat==='NEEDS_REVIEW') out.push(r.a.ay+'-'+r.a.sem+' 「'+r.a.name+'」待確認');
+  });
+  return out;
+ };
+ leaves.forEach(l=>{ l.state=l.ok?'ok':'todo'; l.why=[]; if(!l.ok&&l.bk){ l.why=reasonFor(l.bk); if(l.why.some(w=>w.includes('未通過'))) l.state='fail'; } });
+ const doneLeaves=leaves.filter(l=>l.ok).length;
+ const review=rows.filter(r=>r.review||r.cat==='NEEDS_REVIEW').length;
+ return {rows,leaves,T,geBase,geExtra,geOver,peSem,doneLeaves,totalLeaves:leaves.length,review,ok:leaves.every(l=>l.ok),mode};
+}
+
+/* ============ 成績單解析 ============ */
+const LINE_RE=/^([必選通])\s+([A-Za-z0-9]{6,})\s+(\S+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+(?:([*＊$])\s*)?(\d+(?:\.\d+)?|[PWYFXxI@])$/;
+function parseLines(lines){
+ const clean=lines.map(l=>String(l).replace(/[\s\u3000]+/g,' ').trim()).filter(Boolean);
+ const text=clean.join('\n');
+ const hm=text.match(/(\d{2,3})\s*學年度\s*第\s*(\d)\s*學期/);
+ const rows=[],unmatched=[]; let sumTaken=null,sumEarned=null;
+ for(const s of clean){
+  const m=s.match(LINE_RE);
+  if(m) rows.push({type:m[1],code:m[2],dept:m[3],name:m[4].trim(),credits:parseFloat(m[5]),grade:(m[6]?m[6]+' ':'')+m[7]});
+  else if(/^[必選通]\s+[A-Za-z0-9]{6,}/.test(s)) unmatched.push(s);
+  const c=s.replace(/\s+/g,'');
+  let k;
+  if((k=c.match(/^修習學分(\d+(?:\.\d+)?)/))) sumTaken=parseFloat(k[1]);
+  if((k=c.match(/^實得學分(\d+(?:\.\d+)?)/))) sumEarned=parseFloat(k[1]);
+ }
+ return {ay:hm?+hm[1]:null,sem:hm?+hm[2]:null,rows,unmatched,sumTaken,sumEarned};
+}
+/*CORE_END*/
+
+/* ============ 應用狀態 ============ */
+const KEY='fju-se-audit-v1';
+const DEMO=[
+ [114,1,'必','C0T0101473','軟創學程一','色彩學',3,'98'],[114,1,'必','C0T0101863','軟創學程一','計算機概論',3,'100'],
+ [114,1,'必','C0T0118630','軟創學程一','程式設計(一)',3,'84'],[114,1,'必','C0T0120294','軟創學程一','創意設計思考與方法',2,'78'],
+ [114,1,'必','C810104511','應美一','文字造形',2,'87'],[114,1,'必','CAT0T00009','軟創學程體育','體育',0,'92'],
+ [114,1,'必','CCTN000001E','CT-進修部','國文',2,'75'],[114,1,'必','CFTN000765L','FT-進修部','外國語文(初級英文)',2,'84'],
+ [114,1,'必','CIT0T00155','軟創學程入門','大學入門',2,'98'],
+ [114,2,'通','CDTD837484','永續證照','永續發展目標管理系統-網',2,'88'],[114,2,'必','C0T0102933','軟創學程一','離散數學',3,'60'],
+ [114,2,'必','C0T0116171','軟創學程一','程式設計(二)-網',3,'79'],[114,2,'必','C0T0124438','軟創學程一','創意素描',3,'100'],
+ [114,2,'必','C0T0135077','軟創學程一','作業系統概論',3,'* 21'],[114,2,'必','C810104511','應美一','文字造形',2,'94'],
+ [114,2,'必','CAT0T00009','軟創學程體育','體育',0,'95'],[114,2,'必','CCTN000001E','CT-進修部','國文',2,'62'],
+ [114,2,'必','CFTN000765L','FT-進修部','外國語文(初級英文)',2,'87']
+];
+let S=load(), mode='done', tab='home', pending=[], OPEN={}, EDIT=null;
+function fresh(){return {attempts:[],map:{},nc:{mentor:0,exam:false,pa:false,pb:false,pc:false}};}
+function load(){try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(j&&j.attempts)return Object.assign(fresh(),j);}catch(e){}return fresh();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const uid=()=>'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s);
+const semLabel=(ay,sem)=>ay+' 學年度'+(+sem===3?'暑期':'第 '+sem+' 學期');
+function mkAttempt(o){const g=gradeStatus(o.grade);return Object.assign({id:uid(),status:o.planned?'PLANNED':g.st,src:'manual'},o);}
+
+/* ============ 畫面元件 ============ */
+function bar(v,n,cls){const p=n?Math.max(0,Math.min(100,Math.round(v/n*100))):0;return '<div class="bar '+(cls||'')+'"><i style="width:'+p+'%"></i></div>';}
+function stat(label,have,need,ok,extra){return '<div class="row"><div class="rl"><b>'+label+'</b><span class="'+(ok?'okc':'')+'">'+have+' / '+need+(ok?' ✓':'')+'</span></div>'+bar(have,need,ok?'ok':'')+(extra||'')+'</div>';}
+function chipsOf(A,g){return '<div class="chips">'+A.leaves.filter(l=>l.g===g).map(l=>'<span class="chip '+(l.state==='ok'?'ok':l.state==='fail'?'fail':'')+'">'+(l.state==='ok'?'✓ ':l.state==='fail'?'✕ ':'')+esc(l.label.replace(/（二選一）.*/,''))+'</span>').join('')+'</div>';}
+function catChip(r){
+ const c=r.cat; const cls=c==='FAILED'?'fail':(c==='NEEDS_REVIEW'||r.review)?'warn':(c==='NOT_COUNTED')?'':(c.startsWith('EXTERNAL')?'info':'ok');
+ return '<span class="chip '+cls+'">'+(r.review&&c!=='NEEDS_REVIEW'?'⚠ ':'')+CAT_LABEL[c]+(r.planned?'・規劃':'')+'</span>';
+}
+
+/* ============ 頁面 ============ */
+function vHome(A){
+ const T=A.T, need=Math.max(0,TOTAL-T.total), pct=Math.min(100,Math.round(T.total/TOTAL*100));
+ const unmet=A.leaves.filter(l=>!l.ok&&l.g!=='sum');
+ const rate=Math.round(A.doneLeaves/A.totalLeaves*100);
+ let h='';
+ if(!S.attempts.length) h+='<div class="card"><h2>還沒有修課資料</h2><p class="mut">到「匯入」上傳成績單 PDF，或按右下角「＋課程」手動新增。想先看看效果可載入範例。</p><button class="btn pri" onclick="loadDemo()">載入範例（114-1、114-2）</button></div>';
+ h+='<div class="card hero '+(A.ok?'good':'')+'"><div class="mut">你的畢業進度</div><div class="big">'+T.total+' <small>/ '+TOTAL+' 學分</small></div>'+bar(T.total,TOTAL,T.total>=TOTAL?'ok':'')+
+  '<div class="rl"><span>'+pct+'%</span><span>尚缺最低總學分 <b>'+need+'</b></span></div>'+
+  '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><span class="pill '+(T.total>=TOTAL?'ok':'bad')+'">總學分 '+T.total+' / '+TOTAL+(T.total>=TOTAL?' ✓':' ✕')+'</span><span class="pill '+(A.ok?'ok':'bad')+'">畢業資格：'+(A.ok?'符合':'尚未符合 ✕')+'</span>'+(A.review?'<span class="pill warn">⚠ '+A.review+' 筆待確認</span>':'')+'</div>'+
+  (unmet.length?'<div class="note" style="margin-top:8px">尚未完成的條件（'+unmet.length+' 項）：</div><ul class="tight">'+unmet.slice(0,5).map(l=>'<li>'+esc(l.label.replace(/（二選一）.*/,''))+(l.need>1&&l.g!=='nc'?'（'+l.have+' / '+l.need+'）':'')+'</li>').join('')+(unmet.length>5?'<li class="mut">…還有 '+(unmet.length-5)+' 項</li>':'')+'</ul><button class="btn sm" onclick="go(\'missing\')">看完整清單</button>':'<div class="note">所有已建模的條件都符合。正式畢業仍以學校及學程辦公室審核為準。</div>')+
+  '</div>';
+ h+='<div class="two"><div class="mini">條件完成率<b>'+rate+'%</b>'+A.doneLeaves+' / '+A.totalLeaves+' 項</div><div class="mini">'+(mode==='plan'?'含規劃課程':'只計已通過')+'<b>'+T.total+' 學分</b>'+(A.geOver?'通識超修 '+A.geOver+' 未採計':'採計後學分')+'</div></div>';
+ h+='<div class="card"><h2>全人教育（32）</h2>'+stat('核心課程',T.core,10,T.core>=10&&A.leaves.filter(l=>l.g==='core').every(l=>l.ok))+chipsOf(A,'core')+
+  '<div class="mut" style="margin-top:4px">體育：已通過 '+A.peSem+' / 4 學期（大一 0 學分×2、大二 1 學分×2）</div>'+
+  stat('基本能力',T.basic,12,T.basic>=12)+chipsOf(A,'basic')+
+  stat('通識涵養',T.ge,10,T.ge>=10&&A.leaves.filter(l=>l.g==='ge').every(l=>l.ok))+
+  '<div class="chips">'+DOM.map(d=>'<span class="chip '+(A.geBase[d[0]]>=2?'ok':'')+'">'+(A.geBase[d[0]]>=2?'✓ ':'')+d[1]+' '+A.geBase[d[0]]+'/2</span>').join('')+'<span class="chip '+(A.geExtra>=2?'ok':'')+'">另 2 學分（任一領域）'+A.geExtra+'/2</span></div></div>';
+ h+='<div class="card"><h2>專業課程（66 ＝ 必修 60 ＋ 必選 6）</h2>'+stat('軟創專業必修',T.req,60,T.req>=60)+chipsOf(A,'req')+stat('院系必選（二選一 × 2 組）',T.choice,6,T.choice>=6)+chipsOf(A,'choice')+'</div>';
+ h+='<div class="card"><h2>選修（至少 30）</h2>'+stat('選修總計',T.elec,30,T.elec>=30)+stat('軟創系內專業選修（最低 14）',T.dept,14,T.dept>=14)+
+  '<div class="row"><div class="rl"><b>系外選修</b><span>'+T.ext+' 學分</span></div><div class="mut">其中：理工／傳播／藝術學院符合條件 <b>'+T.extCol+'</b>・其他系外選修 <b>'+T.extOther+'</b></div></div>'+
+  stat('指定學院系外選修（最低 9）',T.extCol,9,T.extCol>=9)+'</div>';
+ const nc=S.nc;
+ h+='<div class="card"><h2>其他畢業條件（非學分）</h2><div class="note">這些無法由成績單判斷，請自行勾選確認。</div>'+
+  '<label style="display:flex;gap:8px;color:var(--ink)"><input type="checkbox" '+(nc.exam||A.leaves.find(l=>l.id==='nc:exam').auto?'checked':'')+' '+(A.leaves.find(l=>l.id==='nc:exam').auto?'disabled':'')+' onchange="setNC(\'exam\',this.checked)"> 已通過程式實作能力檢定'+(A.leaves.find(l=>l.id==='nc:exam').auto?'（課程已通過）':'')+'</label>'+
+  '<div style="margin-top:8px"><b>第三條畢業資格（三項之一，需大四結束前，並搭配專題三）</b></div>'+
+  [['pa','參加「系上認可」軟體創作競賽 ≥ 2 次（正式參賽證明＋照片）'],['pb','取得決賽資格或獲獎 ≥ 1 次（正式證明＋照片）'],['pc','參與產學合作（含科技部）計畫 ≥ 1 項（人員證明／主持人簽章）']].map(x=>'<label style="display:flex;gap:8px;color:var(--ink)"><input type="checkbox" '+(nc[x[0]]?'checked':'')+' onchange="setNC(\''+x[0]+'\',this.checked)"> '+x[1]+'</label>').join('')+
+  '<label>導師時間（校訂必修 0 學分，共 8 學期）已完成學期數</label><input type="number" min="0" max="8" value="'+(+nc.mentor||0)+'" onchange="setNC(\'mentor\',+this.value)"></div>';
+ return h;
+}
+function vMissing(A){
+ const g=(cls,ico,title,items)=>items.length?'<div class="grp '+cls+'"><h3>'+ico+' '+title+'</h3>'+items.join('')+'</div>':'';
+ const item=(t,sub)=>'<div class="item"><b>'+t+'</b>'+(sub?'<div class="mut">'+sub+'</div>':'')+'</div>';
+ const miss=A.leaves.filter(l=>!l.ok);
+ const reqItems=miss.filter(l=>['req','core','basic','choice'].includes(l.g)).map(l=>{
+  const lack=l.need-l.have; const nm=l.label.replace(/（二選一）.*/,'');
+  const why=l.why.length?l.why.join('；'):(l.g==='req'?'軟創 114 必修，目前沒有通過紀錄':'目前沒有通過紀錄');
+  const extra=l.id==='core:pe'?'（已通過 '+l.sem+' / '+l.semNeed+' 學期）':'';
+  return item(esc(nm)+' <span class="mut">缺 '+lack+' 學分'+extra+'</span>',esc(why)+(l.g==='choice'?'<br>可選：'+esc(l.label.split('：')[1]):''));
+ });
+ const eleItems=miss.filter(l=>l.g==='elec').map(l=>item(esc(l.label),'目前 '+l.have+' / '+l.need+'，至少還缺 '+(l.need-l.have)+' 學分'));
+ const geItems=miss.filter(l=>l.g==='ge').map(l=>item(esc(l.label),l.id==='ge:total'?'目前 '+l.have+' / '+l.need:'目前 '+l.have+' / '+l.need+'，尚未完成'));
+ const rev=A.rows.filter(r=>r.review||r.cat==='NEEDS_REVIEW').map(r=>item(esc(r.a.name)+' <span class="mut">'+semLabel(r.a.ay,r.a.sem)+'</span>',esc((r.cls.reason||'')+' '+r.notes.filter(n=>!n.startsWith('畢業採計')).join(' '))));
+ const ncItems=miss.filter(l=>l.g==='nc').map(l=>item(esc(l.label),l.id==='nc:mentor'?'目前 '+l.have+' / 8 學期（請在總覽更新）':'尚未確認（請在總覽勾選）'));
+ const sumItem=A.T.total<TOTAL?[item('總學分尚缺 '+(TOTAL-A.T.total)+' 學分','目前 '+A.T.total+' / '+TOTAL+'。這只是必要條件之一，不代表補滿就能畢業。')]:[];
+ let h='<div class="card"><h2>畢業還缺什麼？</h2><div class="note">模式：'+(mode==='plan'?'包含規劃課程':'只看已完成')+'。總學分 '+A.T.total+' / '+TOTAL+'，畢業資格：'+(A.ok?'符合':'尚未符合')+'。</div>'+
+  g('r','🔴','必須補修',reqItems)+g('o','🟠','選修條件不足',eleItems.concat(sumItem))+g('y','🟡','通識條件',geItems)+g('b','🔵','非學分畢業條件',ncItems)+g('g','⚠','需要你確認的課程',rev);
+ if(A.ok&&!rev.length) h+='<p class="okc">目前沒有未完成的條件 🎉</p>';
+ return h+'</div>';
+}
+function detail(r){
+ const a=r.a; const col=a.college||((S.map[normDept(a.dept)]||DEF_MAP[normDept(a.dept)]||{}).college);
+ return '<div class="det"><dl><dt>原始資料</dt><dd>選別：'+esc(a.type)+'・開課系級：'+esc(a.dept)+'・學分：'+esc(a.credits)+'・成績：'+esc(a.grade||'—')+'</dd>'+
+  '<dt>修課狀態</dt><dd>'+STATUS_LABEL[a.status]+'</dd><dt>系統分類</dt><dd>'+CAT_LABEL[r.cat]+(r.bk?'（'+esc(bucketName(r.bk))+'）':'')+'</dd>'+
+  (col?'<dt>所屬學院</dt><dd>'+esc(col)+((a.college||(S.map[normDept(a.dept)]||DEF_MAP[normDept(a.dept)]||{}).ok)?'':'（未確認）')+'</dd>':'')+
+  '<dt>畢業採計</dt><dd>'+r.counted+' 學分'+(r.bk==='ext:col'?'（指定學院條件 +'+r.counted+'）':'')+'</dd></dl>'+
+  '<div><b>判定理由</b></div><div>'+esc(r.cls.reason)+'</div>'+(r.notes.length?'<ul class="tight">'+r.notes.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul>':'')+
+  '<div style="margin-top:8px;display:flex;gap:6px"><button class="btn sm" onclick="editAttempt(\''+a.id+'\')">編輯／改分類</button><button class="btn sm dng" onclick="delAttempt(\''+a.id+'\')">刪除</button></div></div>';
+}
+function vCourses(A){
+ if(!A.rows.length) return '<div class="card"><h2>課程</h2><p class="mut">尚無資料。</p></div>';
+ const by={}; A.rows.forEach(r=>{const k=r.a.ay+'-'+r.a.sem;(by[k]=by[k]||[]).push(r);});
+ return Object.keys(by).sort().map(k=>{const [ay,sem]=k.split('-');const rs=by[k];
+  return '<div class="card"><h3>'+semLabel(ay,sem)+' <span class="mut">（採計 '+rs.reduce((s,r)=>s+r.counted,0)+' 學分）</span></h3>'+rs.map(r=>{const a=r.a;
+   return '<div class="crs" onclick="tg(\''+a.id+'\')"><div class="cl"><b>'+esc(a.name)+'</b><small>'+esc(a.code)+'・'+esc(a.dept)+'・'+esc(a.credits)+' 學分・'+esc(a.status==='PLANNED'?'規劃中':a.grade)+'</small></div>'+catChip(r)+'</div>'+(OPEN[a.id]?detail(r):'');}).join('')+'</div>';}).join('');
+}
+function vImport(){
+ let h='<div class="card"><h2>匯入成績單 PDF</h2><div class="drop"><p style="margin:0 0 8px">選擇一份或多份「輔仁大學學生學期成績單」PDF（可一次多學期）</p><input type="file" id="fi" accept="application/pdf" multiple onchange="handleFiles(this.files)"></div><div class="note">PDF 只在你的瀏覽器內解析，不會上傳到任何伺服器。解析後需要你確認才會加入計算。</div>'+
+  '<details><summary class="mut" style="cursor:pointer">PDF 解析失敗？貼上成績單文字</summary><textarea id="pt" placeholder="從成績單複製文字後貼上"></textarea><button class="btn sm" onclick="handleText()">解析貼上的文字</button></details><div id="imsg" class="note"></div></div>';
+ pending.forEach((p,pi)=>{
+  const chk=p.chk; 
+  h+='<div class="card"><h3>'+esc(p.name)+'</h3><div class="g2"><div><label>學年度</label><input type="number" value="'+(p.ay||'')+'" onchange="pendSem('+pi+',\'ay\',this.value)"></div><div><label>學期</label><input type="number" value="'+(p.sem||'')+'" onchange="pendSem('+pi+',\'sem\',this.value)"></div></div>'+
+   (chk?'<div class="note">'+chk+'</div>':'')+(p.unmatched.length?'<div class="note" style="color:var(--warn)">有 '+p.unmatched.length+' 行無法解析，請手動新增：<br>'+p.unmatched.map(esc).join('<br>')+'</div>':'')+
+   '<div class="scroll"><table><tr><th></th><th>課名／代碼</th><th>系級</th><th>學分</th><th>成績</th><th>系統分類</th><th></th></tr>'+p.rows.map((r,ri)=>{
+    const cls=classify(r,S); const gs=r.status; const warn=cls.review||gs==='NEEDS_REVIEW';
+    return '<tr class="'+(warn?'rev':'')+'"><td><input type="checkbox" '+(r.keep?'checked':'')+' onchange="pendKeep('+pi+','+ri+',this.checked)"></td><td>'+esc(r.name)+'<br><span class="mut">'+esc(r.code)+'</span></td><td>'+esc(r.dept)+'<br><span class="mut">'+esc(r.type)+'</span></td><td>'+esc(r.credits)+'</td><td>'+esc(r.grade)+'<br><span class="mut">'+STATUS_LABEL[gs]+'</span></td><td>'+(warn?'⚠ ':'')+CAT_LABEL[gs==='FAILED'?'FAILED':cls.cat]+'</td><td><button class="btn sm" onclick="pendEdit('+pi+','+ri+')">改</button></td></tr>';}).join('')+'</table></div>'+
+   '<div style="margin-top:10px;display:flex;gap:8px"><button class="btn pri" onclick="confirmPending('+pi+')">確認並加入計算</button><button class="btn" onclick="pending.splice('+pi+',1);render()">取消</button></div></div>';
+ });
+ return h;
+}
+function vSettings(){
+ const depts=new Set(Object.keys(DEF_MAP)); Object.keys(S.map).forEach(k=>depts.add(k)); S.attempts.forEach(a=>{const d=normDept(a.dept);if(d&&!/軟創/.test(d)&&!/進修部/.test(d))depts.add(d);});
+ const opts=['','理工學院','傳播學院','藝術學院','其他學院'];
+ let h='<div class="card"><h2>開課系所 → 學院對照</h2><div class="note">目前 PDF 只能確認「軟創學程 ＝ 理工學院」。其餘為建議值，勾選「確認」後才會計入「理工／傳播／藝術學院至少 9 學分」。未列出的系所請新增。</div><div class="scroll"><table><tr><th>系所（去除年級）</th><th>學院</th><th>確認</th></tr>';
+ [...depts].forEach(d=>{const e=S.map[d]||DEF_MAP[d]||{college:'',ok:false};
+  h+='<tr><td>'+esc(d)+'</td><td><select data-dp="'+esc(d)+'" onchange="mapCol(this)">'+opts.map(o=>'<option value="'+o+'" '+(o===(e.college||'')?'selected':'')+'>'+(o||'（未知：NEEDS_REVIEW）')+'</option>').join('')+'</select></td><td><input type="checkbox" data-dp="'+esc(d)+'" '+(e.ok?'checked':'')+' onchange="mapOk(this)"></td></tr>';});
+ h+='</table></div><div class="g2" style="margin-top:8px"><input type="text" id="newdept" placeholder="新增系所簡稱，如：資管"><button class="btn" onclick="addDept()">新增</button></div></div>';
+ h+='<div class="card"><h2>規則來源與需要你確認的地方</h2><ul class="tight">'+
+  '<li>總畢業學分 128 ＝ 全人教育 32（核心 10＋基本能力 12＋通識 10）＋專業必修 66（必修 60＋院系必選 6）＋選修 30。與修業規則第二條(七)一致。</li>'+
+  '<li>修業規則(六)寫「選修課程中包含本學程專業選修課程至少 30 學分」，但必修科目表選修為 30、系內專業選修為 14；本系統採「選修合計 ≥30、系內 ≥14、指定學院系外 ≥9」，未假設系外一定 16。</li>'+
+  '<li>通識：四領域各 2（共 8）＋另 2 學分可任選領域。PDF 標註該 2 學分「定義為自由選修」且須排除所屬系院通識排除科目，但未附排除名單，請自行確認。超修通識不採計（PDF 未說明）。</li>'+
+  '<li>資訊素養 0 學分：以程式實作能力檢定為畢業條件；該檢定同時列為 1 學分專業必修，兩者都會檢查。</li>'+
+  '<li>導師時間（0 學分、8 學期）不會出現在成績單，需手動填寫。</li>'+
+  '<li>及格判定：以成績單「＊」為準；數字成績 ≥60 且無＊視為及格（範例中離散數學 60 分即為此情形）。</li>'+
+  '<li>國文、外國語文、體育，以及同代碼於同學年上→下學期連續修習的課程（如文字造形），視為學年課程分別採計；其他同代碼重複通過不重複計算。</li>'+
+  '<li>必修科目表中各課建議修習學期的欄位無法從 PDF 文字取得，未建模。</li>'+
+  '<li>跨部選課限制（進修部生於日間部修習學分每學期不得超過 1/3）不是畢業條件，未納入檢查。</li></ul></div>';
+ h+='<div class="card"><h2>資料備份</h2><div class="note">資料只存在這個瀏覽器。可複製 JSON 備份，之後貼回還原。</div><textarea id="bk">'+esc(JSON.stringify(S))+'</textarea><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn" onclick="restore()">用上方內容還原</button><button class="btn" onclick="loadDemo()">載入範例</button><button class="btn dng" onclick="wipe()">清除全部資料</button></div></div>';
+ return h;
+}
+
+/* ============ 主渲染 ============ */
+function render(){
+ const A=audit(S,mode);
+ const showMode=tab==='home'||tab==='missing';
+ const body=tab==='home'?vHome(A):tab==='missing'?vMissing(A):tab==='courses'?vCourses(A):tab==='import'?vImport():vSettings();
+ const tabs=[['home','總覽'],['missing','還缺什麼'],['courses','課程'],['import','匯入'],['settings','設定']];
+ $('#app').innerHTML='<div class="top"><h1>軟創 114 畢業學分健檢</h1>'+(showMode?'<div class="seg"><button class="'+(mode==='done'?'on':'')+'" onclick="setMode(\'done\')">只看已完成</button><button class="'+(mode==='plan'?'on':'')+'" onclick="setMode(\'plan\')">含規劃課程</button></div>':'')+'</div>'+body+
+  '<button class="btn pri fab" onclick="addAttempt()">＋課程</button><div class="nav"><div>'+tabs.map(t=>'<button class="'+(tab===t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+(t[0]==='missing'&&A.leaves.filter(l=>!l.ok).length?' '+A.leaves.filter(l=>!l.ok).length:'')+'</button>').join('')+'</div></div>';
+}
+function go(t){tab=t;render();window.scrollTo(0,0);}
+function setMode(m){mode=m;render();}
+function tg(id){OPEN[id]=!OPEN[id];render();}
+function setNC(k,v){S.nc[k]=v;save();render();}
+function delAttempt(id){if(!confirm('刪除這筆修課紀錄？'))return;S.attempts=S.attempts.filter(a=>a.id!==id);save();render();}
+function loadDemo(){if(S.attempts.length&&!confirm('會加入範例資料到目前資料中，確定？'))return;DEMO.forEach(d=>S.attempts.push(mkAttempt({ay:d[0],sem:d[1],type:d[2],code:d[3],dept:d[4],name:d[5],credits:d[6],grade:d[7],src:'demo'})));save();tab='home';render();}
+function wipe(){if(!confirm('清除所有修課資料與設定？此動作無法復原。'))return;S=fresh();save();pending=[];render();}
+function restore(){try{const j=JSON.parse($('#bk').value);if(!j.attempts)throw 0;S=Object.assign(fresh(),j);save();render();}catch(e){alert('內容不是有效的備份 JSON');}}
+function mapCol(el){const d=el.dataset.dp;const cur=S.map[d]||DEF_MAP[d]||{ok:false};S.map[d]={college:el.value,ok:cur.ok&&!!el.value,src:'使用者設定'};save();render();}
+function mapOk(el){const d=el.dataset.dp;const cur=S.map[d]||DEF_MAP[d]||{college:''};if(el.checked&&!cur.college){alert('請先選擇學院');el.checked=false;return;}S.map[d]={college:cur.college,ok:el.checked,src:'使用者確認'};save();render();}
+function addDept(){const v=normDept($('#newdept').value);if(!v)return;S.map[v]=S.map[v]||{college:'',ok:false};save();render();}
+
+/* ============ 匯入 ============ */
+async function pdfToLines(file){
+ const buf=await file.arrayBuffer();
+ const pdf=await pdfjsLib.getDocument({data:buf}).promise; const out=[];
+ for(let p=1;p<=pdf.numPages;p++){
+  const tc=await (await pdf.getPage(p)).getTextContent();
+  const its=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str.trim(),x:i.transform[4],y:i.transform[5]}));
+  its.sort((a,b)=>b.y-a.y||a.x-b.x);
+  const rs=[]; for(const it of its){const l=rs[rs.length-1];if(l&&Math.abs(l.y-it.y)<=3)l.items.push(it);else rs.push({y:it.y,items:[it]});}
+  rs.forEach(r=>{r.items.sort((a,b)=>a.x-b.x);out.push(r.items.map(i=>i.s).join(' '));});
+ }
+ return out;
+}
+function stagePending(name,res,fname){
+ let ay=res.ay,sem=res.sem;
+ if(!ay){const m=(fname||'').match(/(\d{3})學年度/);if(m)ay=+m[1];}
+ if(!sem){const m=(fname||'').match(/第(\d)學期/);if(m)sem=+m[1];}
+ const rows=res.rows.map(r=>{const g=gradeStatus(r.grade);return Object.assign({id:uid(),ay,sem,status:g.st,src:'pdf',keep:true},r);});
+ let chk='';
+ const taken=rows.reduce((s,r)=>s+r.credits,0), earned=rows.filter(r=>r.status==='PASSED').reduce((s,r)=>s+r.credits,0);
+ if(res.sumTaken!=null) chk+='修習學分：解析 '+taken+'／成績單 '+res.sumTaken+(taken===res.sumTaken?' ✓':' ✕ 不一致，請核對')+'。';
+ if(res.sumEarned!=null) chk+=' 實得學分：解析 '+earned+'／成績單 '+res.sumEarned+(earned===res.sumEarned?' ✓':' ✕ 不一致，請核對')+'。';
+ if(!rows.length) chk='沒有辨識到任何課程列。';
+ pending.push({name:name,ay,sem,rows,unmatched:res.unmatched,chk});
+}
+async function handleFiles(files){
+ const msg=$('#imsg'); if(typeof pdfjsLib==='undefined'){msg.textContent='PDF 解析元件未能載入，請改用下方「貼上成績單文字」。';return;}
+ for(const f of files){
+  try{msg.textContent='解析中：'+f.name+'…';stagePending(f.name,parseLines(await pdfToLines(f)),f.name);}
+  catch(e){msg.textContent='無法解析 '+f.name+'：'+e.message+'。可改用「貼上成績單文字」。';render();return;}
+ }
+ render();
+}
+function handleText(){const t=$('#pt').value;if(!t.trim())return;stagePending('貼上的文字',parseLines(t.split(/\n/)),'');render();}
+function pendSem(pi,k,v){const p=pending[pi];p[k]=+v;p.rows.forEach(r=>r[k]=+v);render();}
+function pendKeep(pi,ri,v){pending[pi].rows[ri].keep=v;}
+function pendEdit(pi,ri){openEdit(pending[pi].rows[ri],()=>render(),false);}
+function confirmPending(pi){
+ const p=pending[pi]; if(!p.ay||!p.sem){alert('請填入學年度與學期');return;}
+ const keep=p.rows.filter(r=>r.keep);
+ keep.forEach(r=>{S.attempts=S.attempts.filter(a=>!(a.ay===r.ay&&a.sem===r.sem&&a.code===r.code&&a.src!=='manual'));delete r.keep;S.attempts.push(r);});
+ pending.splice(pi,1);save();if(!pending.length)tab='home';render();
+}
+
+/* ============ 編輯對話框 ============ */
+function bucketOptions(sel){
+ const o=(v,t)=>'<option value="'+v+'" '+(v===sel?'selected':'')+'>'+t+'</option>';
+ return o('','自動判定')+'<optgroup label="全人教育">'+CORE.map(x=>o('core:'+x.k,'核心・'+x.n)).join('')+BASIC.map(x=>o('basic:'+x.k,'基本能力・'+x.n)).join('')+DOM.map(d=>o('ge:'+d[0],'通識・'+d[1])).join('')+'</optgroup>'+
+  '<optgroup label="專業必修">'+REQ.map(x=>o('req:'+x.k,x.n)).join('')+'</optgroup><optgroup label="院系必選">'+o('choice:A','必選第一組')+o('choice:B','必選第二組')+'</optgroup>'+
+  '<optgroup label="選修">'+o('elec:dept','軟創系內專業選修')+o('ext:col','系外選修・理工/傳播/藝術學院')+o('ext:other','系外選修・其他')+'</optgroup>'+o('none','不採計');
+}
+function openEdit(a,cb,isNew){
+ EDIT={a,cb,isNew};
+ const f=(id,l,v,t)=>'<div><label>'+l+'</label><input type="'+(t||'text')+'" id="'+id+'" value="'+esc(v==null?'':v)+'"></div>';
+ const opt=(v,t,s)=>'<option value="'+v+'" '+(v===s?'selected':'')+'>'+t+'</option>';
+ const stSel=(a._auto===false||a.status==='PLANNED')?a.status:'auto';
+ const fails=isNew?audit(S,'done').rows.filter(r=>r.cat==='FAILED'):[];
+ const presets=isNew?'<label>快速填入</label><select id="e_pre" onchange="applyPreset(this.value)"><option value="">（自行輸入）</option><option value="self">自主學習（軟創必修 1 學分）</option><option value="summer">暑修課程（學期改為暑期）</option>'+fails.map(r=>'<option value="f:'+r.a.id+'">暑修／重修：'+esc(r.a.name)+'（'+semLabel(r.a.ay,r.a.sem)+' 未通過）</option>').join('')+'</select>':'';
+ $('#dlg').innerHTML='<h3 style="margin:0 0 6px">'+(isNew?'手動新增課程':'編輯課程')+'</h3>'+presets+'<div class="g2">'+f('e_ay','學年度',a.ay||114,'number')+
+  '<div><label>學期</label><select id="e_sem">'+opt('1','第 1 學期',String(a.sem||1))+opt('2','第 2 學期',String(a.sem||1))+opt('3','暑期（暑修）',String(a.sem||1))+'</select></div>'+f('e_code','課程代碼',a.code)+f('e_name','課程名稱',a.name)+f('e_dept','開課系所／系級',a.dept)+
+  '<div><label>學院（留空＝依對照表）</label><select id="e_col">'+['','理工學院','傳播學院','藝術學院','其他學院'].map(c=>opt(c,c||'（依對照表）',a.college||'')).join('')+'</select></div>'+
+  '<div><label>選別（成績單原始欄位）</label><select id="e_type">'+['必','選','通'].map(c=>opt(c,c,a.type||'選')).join('')+'</select></div>'+f('e_cr','學分（可自訂，含 0.5）',a.credits==null?3:a.credits,'number')+f('e_gr','成績（如 88、* 21、P、W）',a.grade)+
+  '<div><label>修課狀態</label><select id="e_st">'+opt('auto','自動（依成績）',stSel)+Object.keys(STATUS_LABEL).map(k=>opt(k,STATUS_LABEL[k],stSel)).join('')+'</select></div></div>'+
+  '<label>連續學期課程（同代碼每學期各計學分）</label><select id="e_se">'+opt('','自動',a.series===true?'true':a.series===false?'false':'')+opt('true','是','' +(a.series===true?'true':''))+opt('false','否',a.series===false?'false':'')+'</select>'+
+  '<label>手動指定採計項目（覆寫系統分類）</label><select id="e_ov">'+bucketOptions(a.ovr||'')+'</select>'+
+  '<div style="display:flex;gap:8px;margin-top:14px"><button class="btn pri" onclick="saveEdit()">儲存</button><button class="btn" onclick="$(\'#dlg\').close()">取消</button></div>';
+ $('#dlg').showModal();
+}
+function applyPreset(v){
+ const set=(id,x)=>{$('#'+id).value=x;};
+ if(v==='self'){set('e_name','自主學習');set('e_dept','軟創學程');set('e_type','必');set('e_cr',1);set('e_code','');set('e_gr','Y');}
+ else if(v==='summer'){set('e_sem','3');}
+ else if(v.startsWith('f:')){const r=S.attempts.find(x=>x.id===v.slice(2));if(r){set('e_name',r.name);set('e_code',r.code);set('e_dept',r.dept);set('e_type',r.type);set('e_cr',r.credits);set('e_gr','');set('e_sem','3');set('e_ay',r.ay);}}
+}
+function saveEdit(){
+ const {a,cb,isNew}=EDIT; const v=id=>$('#'+id).value;
+ if(!v('e_name').trim()){alert('請輸入課程名稱');return;}
+ a.ay=+v('e_ay');a.sem=+v('e_sem');a.code=v('e_code').trim();a.name=v('e_name').trim();a.dept=v('e_dept').trim();a.type=v('e_type');a.credits=parseFloat(v('e_cr'))||0;a.grade=v('e_gr').trim();
+ if(v('e_col'))a.college=v('e_col');else delete a.college;
+ const st=v('e_st'); delete a.planned;
+ if(st==='auto'){a.status=gradeStatus(a.grade).st;a._auto=true;}else{a.status=st;a._auto=false;}
+ const se=v('e_se'); if(se==='')delete a.series;else a.series=se==='true';
+ if(v('e_ov'))a.ovr=v('e_ov');else delete a.ovr;
+ if(isNew){a.id=uid();a.src='manual';S.attempts.push(a);}
+ save();$('#dlg').close();cb();
+}
+function addAttempt(){openEdit({ay:114,sem:1,type:'選',credits:3,grade:'',code:'',name:'',dept:''},()=>{tab='courses';render();},true);}
+function editAttempt(id){const a=S.attempts.find(x=>x.id===id);if(a)openEdit(a,()=>render(),false);}
+render();
+</script>
+</body>
+</html>
