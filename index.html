@@ -73,6 +73,33 @@ textarea{min-height:90px}
 .drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center}
 .note{font-size:13px;color:var(--mute);margin:6px 0}
 ul.tight{margin:4px 0;padding-left:20px}ul.tight li{margin:3px 0}
+
+/* ===== 簡潔版總覽 ===== */
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.metric-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+.metric-card .k{font-size:12.5px;color:var(--mute)}
+.metric-card .v{font-size:23px;font-weight:700;line-height:1.2;margin-top:2px}
+.metric-card .s{font-size:12px;color:var(--mute);margin-top:3px}
+.simple-section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
+.simple-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+.simple-head h2{margin:0;font-size:16px}
+.simple-head b{font-size:15px}
+.simple-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.simple-row:first-of-type{border-top:0}
+.simple-row .name{font-weight:500}
+.simple-row .sub{font-size:12.5px;color:var(--mute);margin-top:1px}
+.simple-row .num{font-weight:700;white-space:nowrap}
+.ge-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.ge-box{background:var(--greybg);border-radius:8px;padding:8px 9px}
+.ge-box .topline{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.ge-box.done{background:var(--okbg);color:var(--ok)}
+.free-ge{margin-top:8px;padding:10px;border:1px dashed var(--line);border-radius:8px;background:var(--bg)}
+.hero-note{margin-top:8px;font-size:13px;color:var(--mute)}
+@media(max-width:600px){
+ .summary-grid{grid-template-columns:1fr}
+ .ge-grid{grid-template-columns:1fr}
+ .big{font-size:38px}
+}
 :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -291,7 +318,17 @@ function audit(S,mode){
  T.choice=U('choice:A')+U('choice:B');
  T.dept=U('elec:dept'); T.extCol=U('ext:col'); T.extOther=U('ext:other'); T.ext=T.extCol+T.extOther;
  T.elec=T.dept+T.ext;
- T.total=T.core+T.basic+T.ge+T.req+T.choice+T.elec;
+
+ /* 分類採計與學生實際已取得學分分開。
+    SIS 已通過、但系所或分類尚待確認的課程，仍然是已取得學分。
+    只有明確重複的課程（dup）才從取得學分排除。 */
+ T.classified=T.core+T.basic+T.ge+T.req+T.choice+T.elec;
+ T.earned=rows.reduce((s,r)=>{
+  const ok=r.a.status==='PASSED'||(mode==='plan'&&r.a.status==='PLANNED');
+  return s+(ok&&!r.dup?(+r.a.credits||0):0);
+ },0);
+ T.total=T.earned;
+
  const leaves=[]; const L=(g,id,label,have,need,ok,bk,extra)=>leaves.push(Object.assign({g,id,label,have,need,ok,bk},extra||{}));
  CORE.forEach(x=>{const h=U('core:'+x.k);L('core','core:'+x.k,x.n,h,x.c,x.k==='pe'?(h>=x.c&&peSem>=x.sem):h>=x.c,'core:'+x.k,x.k==='pe'?{sem:peSem,semNeed:x.sem}:{});});
  BASIC.forEach(x=>L('basic','basic:'+x.k,x.n,U('basic:'+x.k),x.c,U('basic:'+x.k)>=x.c,'basic:'+x.k));
@@ -380,30 +417,66 @@ function catChip(r){
 function vHome(A){
  const T=A.T, need=Math.max(0,TOTAL-T.total), pct=Math.min(100,Math.round(T.total/TOTAL*100));
  const unmet=A.leaves.filter(l=>!l.ok&&l.g!=='sum');
- const rate=Math.round(A.doneLeaves/A.totalLeaves*100);
+ const sec=(label,have,need,sub)=>'<div class="simple-row"><div><div class="name">'+label+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div><div class="num '+(have>=need?'okc':'')+'">'+have+' / '+need+(have>=need?' ✓':'')+'</div></div>';
+ const geBox=(d,label)=>{
+  const have=A.geBase[d]||0, ok=have>=2;
+  return '<div class="ge-box '+(ok?'done':'')+'"><div class="topline"><span>'+label+'</span><b>'+have+' / 2'+(ok?' ✓':'')+'</b></div>'+bar(have,2,ok?'ok':'')+'</div>';
+ };
  let h='';
- if(!S.attempts.length) h+='<div class="card"><h2>還沒有修課資料</h2><p class="mut">到「匯入」上傳成績單 PDF，或按右下角「＋課程」手動新增。想先看看效果可載入範例。</p><button class="btn pri" onclick="loadDemo()">載入範例（114-1、114-2）</button></div>';
- h+='<div class="card hero '+(A.ok?'good':'')+'"><div class="mut">你的畢業進度</div><div class="big">'+T.total+' <small>/ '+TOTAL+' 學分</small></div>'+bar(T.total,TOTAL,T.total>=TOTAL?'ok':'')+
-  '<div class="rl"><span>'+pct+'%</span><span>尚缺最低總學分 <b>'+need+'</b></span></div>'+
-  '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><span class="pill '+(T.total>=TOTAL?'ok':'bad')+'">總學分 '+T.total+' / '+TOTAL+(T.total>=TOTAL?' ✓':' ✕')+'</span><span class="pill '+(A.ok?'ok':'bad')+'">畢業資格：'+(A.ok?'符合':'尚未符合 ✕')+'</span>'+(A.review?'<span class="pill warn">⚠ '+A.review+' 筆待確認</span>':'')+'</div>'+
-  (unmet.length?'<div class="note" style="margin-top:8px">尚未完成的條件（'+unmet.length+' 項）：</div><ul class="tight">'+unmet.slice(0,5).map(l=>'<li>'+esc(l.label.replace(/（二選一）.*/,''))+(l.need>1&&l.g!=='nc'?'（'+l.have+' / '+l.need+'）':'')+'</li>').join('')+(unmet.length>5?'<li class="mut">…還有 '+(unmet.length-5)+' 項</li>':'')+'</ul><button class="btn sm" onclick="go(\'missing\')">看完整清單</button>':'<div class="note">所有已建模的條件都符合。正式畢業仍以學校及學程辦公室審核為準。</div>')+
-  '</div>';
- h+='<div class="two"><div class="mini">條件完成率<b>'+rate+'%</b>'+A.doneLeaves+' / '+A.totalLeaves+' 項</div><div class="mini">'+(mode==='plan'?'含規劃課程':'只計已通過')+'<b>'+T.total+' 學分</b>'+(A.geOver?'通識超修 '+A.geOver+' 未採計':'採計後學分')+'</div></div>';
- h+='<div class="card"><h2>全人教育（32）</h2>'+stat('核心課程',T.core,10,T.core>=10&&A.leaves.filter(l=>l.g==='core').every(l=>l.ok))+chipsOf(A,'core')+
-  '<div class="mut" style="margin-top:4px">體育：已通過 '+A.peSem+' / 4 學期（大一 0 學分×2、大二 1 學分×2）</div>'+
-  stat('基本能力',T.basic,12,T.basic>=12)+chipsOf(A,'basic')+
-  stat('通識涵養',T.ge,10,T.ge>=10&&A.leaves.filter(l=>l.g==='ge').every(l=>l.ok))+
-  '<div class="chips">'+DOM.map(d=>'<span class="chip '+(A.geBase[d[0]]>=2?'ok':'')+'">'+(A.geBase[d[0]]>=2?'✓ ':'')+d[1]+' '+A.geBase[d[0]]+'/2</span>').join('')+'<span class="chip '+(A.geExtra>=2?'ok':'')+'">另 2 學分（任一領域）'+A.geExtra+'/2</span></div></div>';
- h+='<div class="card"><h2>專業課程（66 ＝ 必修 60 ＋ 必選 6）</h2>'+stat('軟創專業必修',T.req,60,T.req>=60)+chipsOf(A,'req')+stat('院系必選（二選一 × 2 組）',T.choice,6,T.choice>=6)+chipsOf(A,'choice')+'</div>';
- h+='<div class="card"><h2>選修（至少 30）</h2>'+stat('選修總計',T.elec,30,T.elec>=30)+stat('軟創系內專業選修（最低 14）',T.dept,14,T.dept>=14)+
-  '<div class="row"><div class="rl"><b>系外選修</b><span>'+T.ext+' 學分</span></div><div class="mut">其中：理工／傳播／藝術學院符合條件 <b>'+T.extCol+'</b>・其他系外選修 <b>'+T.extOther+'</b></div></div>'+
-  stat('指定學院系外選修（最低 9）',T.extCol,9,T.extCol>=9)+'</div>';
- const nc=S.nc;
- h+='<div class="card"><h2>其他畢業條件（非學分）</h2><div class="note">這些無法由成績單判斷，請自行勾選確認。</div>'+
-  '<label style="display:flex;gap:8px;color:var(--ink)"><input type="checkbox" '+(nc.exam||A.leaves.find(l=>l.id==='nc:exam').auto?'checked':'')+' '+(A.leaves.find(l=>l.id==='nc:exam').auto?'disabled':'')+' onchange="setNC(\'exam\',this.checked)"> 已通過程式實作能力檢定'+(A.leaves.find(l=>l.id==='nc:exam').auto?'（課程已通過）':'')+'</label>'+
-  '<div style="margin-top:8px"><b>第三條畢業資格（三項之一，需大四結束前，並搭配專題三）</b></div>'+
-  [['pa','參加「系上認可」軟體創作競賽 ≥ 2 次（正式參賽證明＋照片）'],['pb','取得決賽資格或獲獎 ≥ 1 次（正式證明＋照片）'],['pc','參與產學合作（含科技部）計畫 ≥ 1 項（人員證明／主持人簽章）']].map(x=>'<label style="display:flex;gap:8px;color:var(--ink)"><input type="checkbox" '+(nc[x[0]]?'checked':'')+' onchange="setNC(\''+x[0]+'\',this.checked)"> '+x[1]+'</label>').join('')+
-  '<label>導師時間（校訂必修 0 學分，共 8 學期）已完成學期數</label><input type="number" min="0" max="8" value="'+(+nc.mentor||0)+'" onchange="setNC(\'mentor\',+this.value)"></div>';
+
+ if(!S.attempts.length){
+  h+='<div class="card"><h2>還沒有修課資料</h2><p class="mut">到「同步」登入輔大 SIS 自動抓取歷年成績，或按右下角「＋課程」手動新增。</p><button class="btn pri" onclick="go(\'import\')">前往 SIS 同步</button></div>';
+ }
+
+ h+='<div class="card hero '+(T.total>=TOTAL?'good':'')+'">'+
+   '<div class="mut">目前已取得學分</div>'+
+   '<div class="big">'+T.total+' <small>/ '+TOTAL+' 學分</small></div>'+
+   bar(T.total,TOTAL,T.total>=TOTAL?'ok':'')+
+   '<div class="rl"><span>'+pct+'%</span><span>距離 128 學分還差 <b>'+need+'</b></span></div>'+
+   '<div class="hero-note">總學分以已通過課程的實際取得學分計算。課程分類待確認時，不會把已取得的學分從總數扣掉。</div>'+
+   (A.review?'<div style="margin-top:8px"><span class="pill warn">⚠ '+A.review+' 筆分類待確認</span></div>':'')+
+   '</div>';
+
+ h+='<div class="summary-grid">'+
+   '<div class="metric-card"><div class="k">全人教育</div><div class="v">'+(T.core+T.basic+T.ge)+' / 32</div><div class="s">核心＋基本能力＋通識</div></div>'+
+   '<div class="metric-card"><div class="k">專業課程</div><div class="v">'+(T.req+T.choice)+' / 66</div><div class="s">必修 60＋必選 6</div></div>'+
+   '<div class="metric-card"><div class="k">選修</div><div class="v">'+T.elec+' / 30</div><div class="s">系內＋系外</div></div>'+
+   '</div>';
+
+ h+='<div class="simple-section"><div class="simple-head"><h2>全人教育</h2><b>'+(T.core+T.basic+T.ge)+' / 32</b></div>'+
+   sec('核心課程',T.core,10,'大學入門、人生哲學、專業倫理、體育')+
+   sec('基本能力',T.basic,12,'國文 4＋外國語文 8')+
+   '<div class="simple-row"><div><div class="name">通識涵養</div><div class="sub">四大領域各 2 學分＋自由通識 2 學分</div></div><div class="num '+(T.ge>=10?'okc':'')+'">'+T.ge+' / 10'+(T.ge>=10?' ✓':'')+'</div></div>'+
+   '<div class="ge-grid">'+
+     geBox('hum','人文與藝術')+
+     geBox('sci','自然與科技')+
+     geBox('soc','社會科學')+
+     geBox('sus','永續素養')+
+   '</div>'+
+   '<div class="free-ge"><div class="rl"><b>自由通識（任一領域）</b><span class="'+(A.geExtra>=2?'okc':'')+'"><b>'+A.geExtra+' / 2</b>'+(A.geExtra>=2?' ✓':'')+'</span></div>'+
+   bar(A.geExtra,2,A.geExtra>=2?'ok':'')+
+   '<div class="note">四大領域各先填滿 2 學分；之後多修的通識學分會自動放到這裡，最多再採計 2 學分。例：永續素養共修 4 學分，其中 2 學分完成永續領域，另外 2 學分就是自由通識。</div></div>'+
+   '</div>';
+
+ h+='<div class="simple-section"><div class="simple-head"><h2>專業課程</h2><b>'+(T.req+T.choice)+' / 66</b></div>'+
+   sec('軟創專業必修',T.req,60,'依 114 學年度必修科目表逐科檢查')+
+   sec('院系必選',T.choice,6,'二選一 × 2 組')+
+   '<div style="margin-top:8px"><button class="btn sm" onclick="go(\'missing\')">查看缺少哪些必修</button></div>'+
+   '</div>';
+
+ h+='<div class="simple-section"><div class="simple-head"><h2>選修</h2><b>'+T.elec+' / 30</b></div>'+
+   sec('選修合計',T.elec,30,'所有符合規則的系內＋系外選修')+
+   sec('軟創系內專業選修',T.dept,14,'至少 14 學分')+
+   sec('指定學院系外選修',T.extCol,9,'理工／傳播／藝術學院至少 9 學分')+
+   '<div class="simple-row"><div><div class="name">其他系外選修</div><div class="sub">已分類但不屬指定三學院</div></div><div class="num">'+T.extOther+' 學分</div></div>'+
+   '</div>';
+
+ if(unmet.length){
+  h+='<div class="card"><div class="simple-head"><h2>目前還沒完成</h2><b>'+unmet.length+' 項</b></div>'+
+     '<div class="note">總覽只保留重點，完整缺課與待確認項目放到「缺少項目」。</div>'+
+     '<button class="btn pri" onclick="go(\'missing\')">查看缺少項目</button></div>';
+ }
+
  return h;
 }
 function vMissing(A){
@@ -421,7 +494,7 @@ function vMissing(A){
  const rev=A.rows.filter(r=>r.review||r.cat==='NEEDS_REVIEW').map(r=>item(esc(r.a.name)+' <span class="mut">'+semLabel(r.a.ay,r.a.sem)+'</span>',esc((r.cls.reason||'')+' '+r.notes.filter(n=>!n.startsWith('畢業採計')).join(' '))));
  const ncItems=miss.filter(l=>l.g==='nc').map(l=>item(esc(l.label),l.id==='nc:mentor'?'目前 '+l.have+' / 8 學期（請在總覽更新）':'尚未確認（請在總覽勾選）'));
  const sumItem=A.T.total<TOTAL?[item('總學分尚缺 '+(TOTAL-A.T.total)+' 學分','目前 '+A.T.total+' / '+TOTAL+'。這只是必要條件之一，不代表補滿就能畢業。')]:[];
- let h='<div class="card"><h2>畢業還缺什麼？</h2><div class="note">模式：'+(mode==='plan'?'包含規劃課程':'只看已完成')+'。總學分 '+A.T.total+' / '+TOTAL+'，畢業資格：'+(A.ok?'符合':'尚未符合')+'。</div>'+
+ let h='<div class="card"><h2>畢業還缺什麼？</h2><div class="note">模式：'+(mode==='plan'?'包含規劃課程':'只看已完成')+'。已取得學分 '+A.T.total+' / '+TOTAL+'，畢業資格：'+(A.ok?'符合':'尚未符合')+'。</div>'+
   g('r','🔴','必須補修',reqItems)+g('o','🟠','選修條件不足',eleItems.concat(sumItem))+g('y','🟡','通識條件',geItems)+g('b','🔵','非學分畢業條件',ncItems)+g('g','⚠','需要你確認的課程',rev);
  if(A.ok&&!rev.length) h+='<p class="okc">目前沒有未完成的條件 🎉</p>';
  return h+'</div>';
@@ -489,7 +562,7 @@ function render(){
  const A=audit(S,mode);
  const showMode=tab==='home'||tab==='missing';
  const body=tab==='home'?vHome(A):tab==='missing'?vMissing(A):tab==='courses'?vCourses(A):tab==='import'?vImport():vSettings();
- const tabs=[['home','總覽'],['missing','還缺什麼'],['courses','課程'],['import','匯入'],['settings','設定']];
+ const tabs=[['home','總覽'],['missing','缺少項目'],['courses','課程'],['import','同步'],['settings','設定']];
  $('#app').innerHTML='<div class="top"><h1>軟創 114 畢業學分健檢</h1>'+(showMode?'<div class="seg"><button class="'+(mode==='done'?'on':'')+'" onclick="setMode(\'done\')">只看已完成</button><button class="'+(mode==='plan'?'on':'')+'" onclick="setMode(\'plan\')">含規劃課程</button></div>':'')+'</div>'+body+
   '<button class="btn pri fab" onclick="addAttempt()">＋課程</button><div class="nav"><div>'+tabs.map(t=>'<button class="'+(tab===t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+(t[0]==='missing'&&A.leaves.filter(l=>!l.ok).length?' '+A.leaves.filter(l=>!l.ok).length:'')+'</button>').join('')+'</div></div>';
 }
