@@ -174,16 +174,24 @@ function classify(a,S){
  if((m=BASIC.find(x=>x.re.test(nm)))) return mk('basic:'+m.k,'BASIC_COMPETENCY','課程名稱符合 114 必修科目表「基本能力課程」的「'+m.n+'」。');
  if((m=REQ.find(x=>x.n===nm))){
   if(isSoft) return mk('req:'+m.k,'DEPARTMENT_REQUIRED','課程名稱與開課單位（軟創）皆符合 114 軟創專業必修「'+m.n+'」。');
+  if(a.src==='sis'&&!dp&&a.type==='必') return mk('req:'+m.k,'DEPARTMENT_REQUIRED','SIS「學期成績查詢」未提供開課系所，但課程名稱與 114 軟創專業必修「'+m.n+'」完全一致，且 SIS 選別為「必修」，因此先採計為本學程必修。',{review:true});
   return mk(null,'NEEDS_REVIEW','課程名稱與軟創必修「'+m.n+'」相同，但開課單位為「'+(a.dept||'?')+'」。PDF 沒有規定他系同名課程可否抵認，請人工確認（可在編輯中指定採計項目）。',{review:true});
  }
  for(const g of Object.keys(CHOICE)){
   if(CHOICE[g].names.includes(nm)){
    if(isSoft) return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','屬 114 院系必選「二選一」'+CHOICE[g].label+'（'+CHOICE[g].names.join(' / ')+'），同組完成一門即滿足。');
+   if(a.src==='sis'&&!dp&&a.type==='必') return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','SIS 成績 API 未提供開課系所；課名符合院系必選'+CHOICE[g].label+'且 SIS 選別為「必修」，先採計此必選課程。',{review:true});
    return mk(null,'NEEDS_REVIEW','課程名稱屬院系必選'+CHOICE[g].label+'，但開課單位非軟創，請人工確認。',{review:true});
   }
  }
  if(a.type==='通'||/通識/.test(dp)){
   let d=null,auto=false;
+  const gi=String(a.sis&&a.sis.genEduField||'');
+  if(/人文與藝術/.test(gi)) d='hum';
+  else if(/自然與科技/.test(gi)) d='sci';
+  else if(/社會科學/.test(gi)) d='soc';
+  else if(/永續素養/.test(gi)) d='sus';
+  if(d) return mk('ge:'+d,'GENERAL_EDUCATION','SIS 成績資料的通識領域為「'+gi+'」，採計至「'+DOM.find(x=>x[0]===d)[1]+'」領域。請仍確認不在所屬系(學程)院的通識排除科目內。',{review:false});
   if(/永續/.test(nm+dp)){d='sus';auto=true;}
   if(d) return mk('ge:'+d,'GENERAL_EDUCATION','選別為「通」，課程名稱／開課單位含「永續」，推定屬「永續素養」領域。'+(auto?'領域為推定值，請確認；另請確認不在所屬系(學程)院的通識排除科目內。':''),{review:auto});
   return mk(null,'GENERAL_EDUCATION','選別為「通」，但無法判斷所屬通識領域（人文與藝術／自然與科技／社會科學／永續素養）。請在編輯中指定採計項目。',{review:true});
@@ -534,7 +542,7 @@ async function sisLoginSync(){
    const a=mkAttempt({
     ay:+r.ay,sem:+r.sem,type:r.type||'選',code:r.code||'',
     dept:r.dept||'',name:r.name||'',credits:+r.credits||0,
-    grade,status:r.status||g.st,src:'sis'
+    grade,status:r.status||g.st,src:'sis',sis:r.sis||null
    });
    if(r.ovr)a.ovr=r.ovr;
    if(r.series===true||r.series===false)a.series=r.series;
@@ -542,8 +550,9 @@ async function sisLoginSync(){
    S.attempts.push(a); added++;
   });
   if(pwdEl)pwdEl.value='';
+  const rawPassed=data.attempts.filter(r=>r.status==='PASSED').reduce((s,r)=>s+(+r.credits||0),0);
   save(); tab='home'; render();
-  alert('SIS 同步完成，共匯入 '+added+' 筆課程。');
+  alert('SIS 同步完成，共匯入 '+added+' 筆課程；SIS 原始已通過學分合計 '+rawPassed+'。');
  }catch(e){
   msg.textContent='同步失敗：'+e.message;
  }finally{
