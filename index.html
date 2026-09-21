@@ -95,6 +95,12 @@ ul.tight{margin:4px 0;padding-left:20px}ul.tight li{margin:3px 0}
 .ge-box.done{background:var(--okbg);color:var(--ok)}
 .free-ge{margin-top:8px;padding:10px;border:1px dashed var(--line);border-radius:8px;background:var(--bg)}
 .hero-note{margin-top:8px;font-size:13px;color:var(--mute)}
+.sync-steps{display:grid;gap:7px;margin:10px 0}
+.sync-step{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start;padding:8px 9px;border-radius:8px;background:var(--greybg)}
+.sync-step i{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:var(--brand);color:white;font-style:normal;font-size:12px;font-weight:700}
+.bookmarklet{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.plan-status{padding:8px 10px;border-radius:8px;background:var(--okbg);color:var(--ok);margin-top:8px;font-size:13px}
+
 @media(max-width:600px){
  .summary-grid{grid-template-columns:1fr}
  .ge-grid{grid-template-columns:1fr}
@@ -201,13 +207,13 @@ function classify(a,S){
  if((m=BASIC.find(x=>x.re.test(nm)))) return mk('basic:'+m.k,'BASIC_COMPETENCY','課程名稱符合 114 必修科目表「基本能力課程」的「'+m.n+'」。');
  if((m=REQ.find(x=>x.n===nm))){
   if(isSoft) return mk('req:'+m.k,'DEPARTMENT_REQUIRED','課程名稱與開課單位（軟創）皆符合 114 軟創專業必修「'+m.n+'」。');
-  if(a.src==='sis'&&!dp&&a.type==='必') return mk('req:'+m.k,'DEPARTMENT_REQUIRED','學校成績資料未提供開課系所，但課程名稱與 114 軟創專業必修「'+m.n+'」完全一致，且選別為「必修」，因此先採計為本學程必修。',{review:true});
+  if((a.src==='sis'||a.src==='portal')&&!dp&&a.type==='必') return mk('req:'+m.k,'DEPARTMENT_REQUIRED','學校資料未提供開課系所，但課程名稱與 114 軟創專業必修「'+m.n+'」完全一致，且選別為「必修」，因此先採計為本學程必修。',{review:true});
   return mk(null,'NEEDS_REVIEW','課程名稱與軟創必修「'+m.n+'」相同，但開課單位為「'+(a.dept||'?')+'」。PDF 沒有規定他系同名課程可否抵認，請人工確認（可在編輯中指定採計項目）。',{review:true});
  }
  for(const g of Object.keys(CHOICE)){
   if(CHOICE[g].names.includes(nm)){
    if(isSoft) return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','屬 114 院系必選「二選一」'+CHOICE[g].label+'（'+CHOICE[g].names.join(' / ')+'），同組完成一門即滿足。');
-   if(a.src==='sis'&&!dp&&a.type==='必') return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','學校成績資料未提供開課系所；課名符合院系必選'+CHOICE[g].label+'且選別為「必修」，先採計此必選課程。',{review:true});
+   if((a.src==='sis'||a.src==='portal')&&!dp&&a.type==='必') return mk('choice:'+g,'DEPARTMENT_REQUIRED_ELECTIVE','學校資料未提供開課系所；課名符合院系必選'+CHOICE[g].label+'且選別為「必修」，先採計此必選課程。',{review:true});
    return mk(null,'NEEDS_REVIEW','課程名稱屬院系必選'+CHOICE[g].label+'，但開課單位非軟創，請人工確認。',{review:true});
   }
  }
@@ -259,13 +265,35 @@ function audit(S,mode){
   if(st!=='PASSED'){row.cat=st==='NEEDS_REVIEW'?'NEEDS_REVIEW':'NOT_COUNTED';row.review=st==='NEEDS_REVIEW';row.notes.push('修課狀態為「'+(STATUS_LABEL[st]||st)+'」，不採計。');continue;}
   const nm=normName(a.name), code=String(a.code||'').toUpperCase();
   if(a.ovr!=='none'||true){
+   /* 第一層：同一學期同一門課一定是重複匯入，不論是否屬連續學期課程。 */
+   const exactDup=passed.find(p=>sameImportedCourse(p.a,a));
+   if(exactDup){
+    row.cat='NOT_COUNTED'; row.dup=true;
+    row.notes.push('同一學期的同一門課已有紀錄，判定為重複匯入，不再次累加學分。');
+    continue;
+   }
+
+   if(!code&&!SERIES_RE.test(nm)&&a.series!==true){
+    const prevNameNoCode=passed.find(p=>normName(p.a.name)===nm);
+    if(prevNameNoCode){
+     row.cat='NOT_COUNTED';row.dup=true;
+     row.notes.push('此課程沒有課程代碼，但同名課程先前已通過，為避免重複累加，暫不再次採計。');
+     continue;
+    }
+   }
    const prevSame=code?passed.filter(p=>String(p.a.code||'').toUpperCase()===code):[];
    if(prevSame.length){
     const last=prevSame[prevSame.length-1];
-    const seriesAuto=SERIES_RE.test(nm)||(last.a.ay===a.ay&&last.a.sem===1&&a.sem===2);
+    const differentTerm=(+last.a.ay!==+a.ay)||(+last.a.sem!==+a.sem);
+    const consecutive=(+last.a.ay===+a.ay&&+last.a.sem===1&&+a.sem===2);
+    const seriesAuto=differentTerm && (SERIES_RE.test(nm)||consecutive);
     const series=a.series===true||(a.series!==false&&seriesAuto);
-    if(!series){row.cat='NOT_COUNTED';row.dup=true;row.notes.push('同一課程代碼已於 '+last.a.ay+'-'+last.a.sem+' 通過，不重複採計畢業學分。若這是分學期連續修習的課程，請在編輯中將「連續學期課程」設為「是」。');continue;}
-    row.notes.push(a.series===true?'使用者標示為連續學期課程，各學期分別採計。':'同代碼於連續學期修習，視為學年課程，各學期分別採計（可在編輯中改為「否」）。');
+    if(!series){
+     row.cat='NOT_COUNTED';row.dup=true;
+     row.notes.push('同一課程代碼已於 '+last.a.ay+'-'+last.a.sem+' 通過，不重複採計畢業學分。若這是分學期連續修習的課程，請在編輯中將「連續學期課程」設為「是」。');
+     continue;
+    }
+    row.notes.push(a.series===true?'使用者標示為連續學期課程，各學期分別採計。':'不同學期的連續課程，各學期分別採計。');
     if(!SERIES_RE.test(nm)) row.review=true;
    } else if(!SERIES_RE.test(nm)){
     const prevName=passed.filter(p=>normName(p.a.name)===nm&&String(p.a.code||'').toUpperCase()!==code);
@@ -396,14 +424,66 @@ const DEMO=[
 ];
 const SYNC_API='https://fju-sis-credit-audit.s02204-hill.workers.dev/';
 let S=load(), mode='done', tab='home', pending=[], OPEN={}, EDIT=null;
-function fresh(){return {attempts:[],map:{},nc:{mentor:0,exam:false,pa:false,pb:false,pc:false}};}
+function fresh(){return {attempts:[],map:{},nc:{mentor:0,exam:false,pa:false,pb:false,pc:false},plan:{}};}
 function load(){try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(j&&j.attempts)return Object.assign(fresh(),j);}catch(e){}return fresh();}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function save(){try{S.attempts=dedupeAttempts(S.attempts);localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 const uid=()=>'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=s=>document.querySelector(s);
 const semLabel=(ay,sem)=>ay+' 學年度'+(+sem===3?'暑期':'第 '+sem+' 學期');
 function mkAttempt(o){const g=gradeStatus(o.grade);return Object.assign({id:uid(),status:o.planned?'PLANNED':g.st,src:'manual'},o);}
+
+/* ============ 匯入去重 / 更新 ============ */
+/* 同一學期的同一門課只保留一筆。
+   優先用課程代碼；沒有代碼（SIS 成績 API 常見）時，用標準化課名比對。
+   不跨學期合併，因此國文、外語、體育等連續學期課程不會被誤刪。 */
+function sameImportedCourse(a,b){
+ if(+a.ay!==+b.ay || +a.sem!==+b.sem) return false;
+ const ac=String(a.code||'').trim().toUpperCase();
+ const bc=String(b.code||'').trim().toUpperCase();
+ if(ac && bc) return ac===bc;
+ return normName(a.name)===normName(b.name);
+}
+function mergeAttempt(oldA,newA){
+ const keep={
+  id:oldA.id||newA.id||uid(),
+  ovr:oldA.ovr,
+  college:oldA.college,
+  series:oldA.series
+ };
+ const oldPlanned=oldA.status==='PLANNED';
+ const newPlanned=newA.status==='PLANNED';
+ /* 同一學期同一門課若同時存在「實際成績」與「規劃中」，
+    一律保留實際成績，避免規劃同步把已取得成績覆蓋掉。 */
+ const merged=(!oldPlanned&&newPlanned)
+  ?Object.assign({},newA,oldA,{id:keep.id})
+  :Object.assign({},oldA,newA,{id:keep.id});
+ if(keep.ovr!==undefined) merged.ovr=keep.ovr;
+ if(keep.college!==undefined) merged.college=keep.college;
+ if(keep.series!==undefined) merged.series=keep.series;
+ return merged;
+}
+function upsertAttempt(a){
+ const i=S.attempts.findIndex(x=>sameImportedCourse(x,a));
+ if(i>=0){
+  S.attempts[i]=mergeAttempt(S.attempts[i],a);
+  return false;
+ }
+ S.attempts.push(a);
+ return true;
+}
+function dedupeAttempts(list){
+ const out=[];
+ for(const a of list||[]){
+  const i=out.findIndex(x=>sameImportedCourse(x,a));
+  if(i<0) out.push(a);
+  else out[i]=mergeAttempt(out[i],a);
+ }
+ return out;
+}
+/* 舊版本若已因重複登入留下重複資料，載入新版後立即清理。 */
+S.attempts=dedupeAttempts(S.attempts);
+save();
 
 /* ============ 畫面元件 ============ */
 function bar(v,n,cls){const p=n?Math.max(0,Math.min(100,Math.round(v/n*100))):0;return '<div class="bar '+(cls||'')+'"><i style="width:'+p+'%"></i></div>';}
@@ -416,7 +496,7 @@ function catChip(r){
 
 /* ============ 頁面 ============ */
 function vHome(A){
- const T=A.T, need=Math.max(0,TOTAL-T.total), pct=Math.min(100,Math.round(T.total/TOTAL*100));
+ const T=A.T, D=mode==='plan'?audit(S,'done'):A, need=Math.max(0,TOTAL-T.total), pct=Math.min(100,Math.round(T.total/TOTAL*100));
  const unmet=A.leaves.filter(l=>!l.ok&&l.g!=='sum');
  const sec=(label,have,need,sub)=>'<div class="simple-row"><div><div class="name">'+label+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div><div class="num '+(have>=need?'okc':'')+'">'+have+' / '+need+(have>=need?' ✓':'')+'</div></div>';
  const geBox=(d,label)=>{
@@ -430,11 +510,13 @@ function vHome(A){
  }
 
  h+='<div class="card hero '+(T.total>=TOTAL?'good':'')+'">'+
-   '<div class="mut">目前已取得學分</div>'+
+   '<div class="mut">'+(mode==='plan'?'完成＋目前規劃後':'目前已取得學分')+'</div>'+
    '<div class="big">'+T.total+' <small>/ '+TOTAL+' 學分</small></div>'+
    bar(T.total,TOTAL,T.total>=TOTAL?'ok':'')+
    '<div class="rl"><span>'+pct+'%</span><span>距離 128 學分還差 <b>'+need+'</b></span></div>'+
-   '<div class="hero-note">總學分以已通過課程的實際取得學分計算。課程分類待確認時，不會把已取得的學分從總數扣掉。</div>'+
+   '<div class="hero-note">'+(mode==='plan'
+      ?'目前已完成 '+D.T.total+' 學分；此模式另外把「規劃中」課程加入預估。規劃課程不會改寫已完成成績。'
+      :'總學分以已通過課程的實際取得學分計算。課程分類待確認時，不會把已取得的學分從總數扣掉。')+'</div>'+
    (A.review?'<div style="margin-top:8px"><span class="pill warn">⚠ '+A.review+' 筆分類待確認</span></div>':'')+
    '</div>';
 
@@ -562,7 +644,7 @@ function vMissing(A){
  ]:[];
 
  let h='<div class="card"><h2>缺少項目</h2>'+
-  '<div class="note">目前實際已取得 <b>'+A.T.total+' / '+TOTAL+'</b> 學分。這一頁把「真的要重修」和「只是尚未修到」分開顯示。</div>'+
+  '<div class="note">'+(mode==='plan'?'完成＋規劃後':'目前實際已取得')+' <b>'+A.T.total+' / '+TOTAL+'</b> 學分。這一頁把「真的要重修」和「只是尚未修到」分開顯示。</div>'+
   g('r','🔴','需要重修',retryItems,'只有曾修過但未通過的必修才會放在這裡。')+
   g('o','🟠','必修／必選尚未完成',pendingReqItems,'尚未修習或尚未修滿，不等於不及格，也不一定是現在就要補修。')+
   g('y','🟡','通識條件',geItems,'通識共 10 學分：四領域各 2 學分，再加任一領域自由修讀 2 學分。')+
@@ -591,12 +673,35 @@ function vCourses(A){
    return '<div class="crs" onclick="tg(\''+a.id+'\')"><div class="cl"><b>'+esc(a.name)+'</b><small>'+esc(a.code)+'・'+esc(a.dept)+'・'+esc(a.credits)+' 學分・'+esc(a.status==='PLANNED'?'規劃中':a.grade)+'</small></div>'+catChip(r)+'</div>'+(OPEN[a.id]?detail(r):'');}).join('')+'</div>';}).join('');
 }
 function vImport(){
- let h='<div class="card"><h2>自動同步成績</h2>'+
-  '<div class="note">輸入學號與密碼後即可更新歷年成績。登入資訊只用於這次同步，不會預先填入任何個人帳號。</div>'+
-  '<label>學號</label><input type="text" id="sis_uid" inputmode="numeric" autocomplete="username" placeholder="請輸入學號">'+
+ const term=inferCurrentTerm();
+ const planCount=S.attempts.filter(a=>a.status==='PLANNED'&&a.src==='portal').length;
+ let h='<div class="card"><h2>同步已完成成績</h2>'+
+  '<div class="note">輸入學號與密碼後更新歷年成績。學號不固定、密碼不會寫入 localStorage。</div>'+
+  '<label>學號</label><input type="text" id="sis_uid" inputmode="numeric" autocomplete="username" placeholder="請輸入 9 碼學號">'+
   '<label>密碼</label><input type="password" id="sis_pwd" autocomplete="current-password" placeholder="請輸入密碼">'+
-  '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="sis_btn" onclick="sisLoginSync()">同步成績</button></div>'+
+  '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="sis_btn" onclick="sisLoginSync()">同步歷年成績</button></div>'+
   '<div id="sis_msg" class="note"></div></div>'+
+
+  '<div class="card"><h2>同步目前規劃課程</h2>'+
+  '<div class="note">Portal 登入含官方 Turnstile，因此不由後端代登入。你正常登入入口網後，用一次性的「規劃同步」書籤讀取官方 WebAPICourseList，再傳回這個頁面。</div>'+
+  (planCount?'<div class="plan-status">目前已有 '+planCount+' 筆 Portal 規劃課程；再次同步會更新目前學期，不會一直累加。</div>':'')+
+  '<div class="sync-steps">'+
+   '<div class="sync-step"><i>1</i><div><b>第一次使用：</b>把下方「規劃同步」拖到瀏覽器書籤列。只需要做一次。</div></div>'+
+   '<div class="sync-step"><i>2</i><div>按「開啟學生入口網」，正常完成官方登入。</div></div>'+
+   '<div class="sync-step"><i>3</i><div>停在入口網首頁，點瀏覽器書籤列的「規劃同步」。課程會自動傳回本頁。</div></div>'+
+  '</div>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+   '<a class="btn pri bookmarklet" id="portal_bm" href="#" onclick="alert(\'請把這個按鈕拖到瀏覽器書籤列，再到入口網頁面點書籤。\');return false;">規劃同步</a>'+
+   '<button class="btn" onclick="openPortalPlan()">開啟學生入口網</button>'+
+   '<button class="btn" onclick="copyPortalBookmarklet()">複製書籤網址</button>'+
+  '</div>'+
+  '<div class="note">預設規劃學期：'+term.ay+' 學年度第 '+term.sem+' 學期。同步後可在「課程」中逐筆編輯分類。</div>'+
+  '<details style="margin-top:10px"><summary class="mut" style="cursor:pointer">若自動傳回失敗：貼上規劃課程 JSON</summary>'+
+   '<textarea id="plan_json" placeholder="貼上規劃同步書籤複製的 JSON"></textarea>'+
+   '<button class="btn sm" onclick="importPlanText()">匯入規劃課程</button>'+
+  '</details>'+
+  '<div id="plan_msg" class="note"></div></div>'+
+
   '<details class="card"><summary style="cursor:pointer;font-weight:700">備用：匯入成績單 PDF</summary><div class="drop" style="margin-top:10px"><p style="margin:0 0 8px">選擇一份或多份「輔仁大學學生學期成績單」PDF（可一次多學期）</p><input type="file" id="fi" accept="application/pdf" multiple onchange="handleFiles(this.files)"></div><div class="note">PDF 只在你的瀏覽器內解析，不會上傳到任何伺服器。解析後需要你確認才會加入計算。</div>'+
   '<details><summary class="mut" style="cursor:pointer">PDF 解析失敗？貼上成績單文字</summary><textarea id="pt" placeholder="從成績單複製文字後貼上"></textarea><button class="btn sm" onclick="handleText()">解析貼上的文字</button></details><div id="imsg" class="note"></div></details>'; pending.forEach((p,pi)=>{
   const chk=p.chk; 
@@ -638,6 +743,7 @@ function render(){
  const tabs=[['home','總覽'],['missing','缺少項目'],['courses','課程'],['import','更新'],['settings','設定']];
  $('#app').innerHTML='<div class="top"><h1>軟創 114 畢業學分健檢</h1>'+(showMode?'<div class="seg"><button class="'+(mode==='done'?'on':'')+'" onclick="setMode(\'done\')">只看已完成</button><button class="'+(mode==='plan'?'on':'')+'" onclick="setMode(\'plan\')">含規劃課程</button></div>':'')+'</div>'+body+
   '<button class="btn pri fab" onclick="addAttempt()">＋課程</button><div class="nav"><div>'+tabs.map(t=>'<button class="'+(tab===t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+(t[0]==='missing'&&A.leaves.filter(l=>!l.ok).length?' '+A.leaves.filter(l=>!l.ok).length:'')+'</button>').join('')+'</div></div>';
+ const bm=$('#portal_bm'); if(bm) bm.href=portalBookmarklet();
 }
 function go(t){tab=t;render();window.scrollTo(0,0);}
 function setMode(m){mode=m;render();}
@@ -650,6 +756,94 @@ function restore(){try{const j=JSON.parse($('#bk').value);if(!j.attempts)throw 0
 function mapCol(el){const d=el.dataset.dp;const cur=S.map[d]||DEF_MAP[d]||{ok:false};S.map[d]={college:el.value,ok:cur.ok&&!!el.value,src:'使用者設定'};save();render();}
 function mapOk(el){const d=el.dataset.dp;const cur=S.map[d]||DEF_MAP[d]||{college:''};if(el.checked&&!cur.college){alert('請先選擇學院');el.checked=false;return;}S.map[d]={college:cur.college,ok:el.checked,src:'使用者確認'};save();render();}
 function addDept(){const v=normDept($('#newdept').value);if(!v)return;S.map[v]=S.map[v]||{college:'',ok:false};save();render();}
+
+
+/* ============ Portal 規劃課程同步 ============ */
+function inferCurrentTerm(d=new Date()){
+ const roc=d.getFullYear()-1911, m=d.getMonth()+1;
+ if(m>=8) return {ay:roc,sem:1};
+ if(m===1) return {ay:roc-1,sem:1};
+ return {ay:roc-1,sem:2};
+}
+function plannedType(name){
+ const nm=normName(name);
+ if(CORE.some(x=>x.re.test(nm))) return '必';
+ if(BASIC.some(x=>x.re.test(nm))) return '必';
+ if(REQ.some(x=>x.n===nm)) return '必';
+ for(const k of Object.keys(CHOICE)) if(CHOICE[k].names.includes(nm)) return '必';
+ return '選';
+}
+function portalBookmarklet(){
+ const js=`(async()=>{try{
+  const r=await fetch('/student/api/WebAPICourseList',{credentials:'include',headers:{'Accept':'application/json, text/javascript, */*; q=0.01','X-Requested-With':'XMLHttpRequest'}});
+  const ct=r.headers.get('content-type')||'';
+  if(!r.ok||!ct.includes('json')) throw new Error('請先登入學生資訊入口網');
+  const courses=await r.json();
+  const payload={type:'FJU_PORTAL_COURSES',courses};
+  if(window.opener&&!window.opener.closed){
+    window.opener.postMessage(payload,'*');
+    alert('規劃課程已傳回學分健檢，共 '+courses.length+' 筆。');
+  }else{
+    const s=JSON.stringify(courses);
+    try{await navigator.clipboard.writeText(s);alert('已複製 '+courses.length+' 筆規劃課程，回學分健檢貼上即可。');}
+    catch(_){prompt('請複製以下規劃課程 JSON：',s);}
+  }
+ }catch(e){alert('規劃同步失敗：'+e.message);}
+})()`;
+ return 'javascript:'+encodeURIComponent(js).replace(/%20/g,' ');
+}
+function openPortalPlan(){
+ window.open('https://portal.fju.edu.tw/student/','fjuPortal');
+ const m=$('#plan_msg');if(m)m.textContent='入口網已開啟。登入後請在入口網頁面點書籤列的「規劃同步」。';
+}
+async function copyPortalBookmarklet(){
+ try{
+  await navigator.clipboard.writeText(portalBookmarklet());
+  alert('已複製書籤網址。請新增一個瀏覽器書籤，名稱可設「規劃同步」，網址貼上剛複製的內容。');
+ }catch(e){
+  prompt('請複製以下內容作為書籤網址：',portalBookmarklet());
+ }
+}
+function importPlannedCourses(courses){
+ if(!Array.isArray(courses)) throw new Error('規劃課程資料格式錯誤');
+ const term=inferCurrentTerm();
+
+ /* 目前學期每次同步先移除舊 Portal 規劃，再放入最新清單；
+    已完成成績不會被刪除，也不會被 PLANNED 覆蓋。 */
+ S.attempts=S.attempts.filter(a=>!(
+  a.src==='portal'&&a.status==='PLANNED'&&+a.ay===term.ay&&+a.sem===term.sem
+ ));
+
+ let n=0;
+ for(const c of courses){
+  const name=String(c.coucna||c.name||'').trim();
+  if(!name) continue;
+  const credits=Number(c.credit??c.credits??0)||0;
+  const a=mkAttempt({
+   ay:term.ay,sem:term.sem,type:plannedType(name),code:'',dept:'',
+   name,credits,grade:'',status:'PLANNED',planned:true,src:'portal',
+   portal:{teacher:String(c.tchcna||c.teacher||'')}
+  });
+  upsertAttempt(a);n++;
+ }
+ S.plan={ay:term.ay,sem:term.sem,lastSync:new Date().toISOString(),count:n};
+ save();mode='plan';tab='home';render();
+ alert('規劃課程同步完成，共 '+n+' 筆。已切換到「含規劃課程」模式。');
+}
+function importPlanText(){
+ const el=$('#plan_json'),m=$('#plan_msg');
+ try{
+  const data=JSON.parse((el&&el.value||'').trim());
+  importPlannedCourses(Array.isArray(data)?data:(data.courses||[]));
+ }catch(e){if(m)m.textContent='規劃課程匯入失敗：'+e.message;}
+}
+window.addEventListener('message',e=>{
+ if(e.origin!=='https://portal.fju.edu.tw') return;
+ if(e.data&&e.data.type==='FJU_PORTAL_COURSES'&&Array.isArray(e.data.courses)){
+  try{importPlannedCourses(e.data.courses);}
+  catch(err){alert('規劃課程匯入失敗：'+err.message);}
+ }
+});
 
 /* ============ SIS 自動同步 ============ */
 /*
@@ -680,7 +874,7 @@ async function sisLoginSync(){
   if(!res.ok) throw new Error((data&&data.error)||('HTTP '+res.status));
   if(!data||!Array.isArray(data.attempts)) throw new Error('同步資料格式錯誤');
 
-  let added=0;
+  let updated=0;
   data.attempts.forEach(r=>{
    const grade=String(r.grade==null?'':r.grade);
    const g=gradeStatus(grade);
@@ -691,15 +885,14 @@ async function sisLoginSync(){
    });
    if(r.ovr)a.ovr=r.ovr;
    if(r.series===true||r.series===false)a.series=r.series;
-   S.attempts=S.attempts.filter(x=>!(x.ay===a.ay&&x.sem===a.sem&&x.name===a.name&&x.src==='sis'));
-   S.attempts.push(a); added++;
+   upsertAttempt(a); updated++;
   });
 
   if(uidEl)uidEl.value='';
   if(pwdEl)pwdEl.value='';
   const rawPassed=data.attempts.filter(r=>r.status==='PASSED').reduce((s,r)=>s+(+r.credits||0),0);
   save(); tab='home'; render();
-  alert('同步完成，共更新 '+added+' 筆課程；目前已通過學分合計 '+rawPassed+'。');
+  alert('歷年成績同步完成，共更新 '+updated+' 筆課程；來源資料的已通過學分合計 '+rawPassed+'。');
  }catch(e){
   msg.textContent='同步失敗：'+e.message.replace(/^SIS 同步失敗：?/,'');
  }finally{
@@ -747,7 +940,7 @@ function pendEdit(pi,ri){openEdit(pending[pi].rows[ri],()=>render(),false);}
 function confirmPending(pi){
  const p=pending[pi]; if(!p.ay||!p.sem){alert('請填入學年度與學期');return;}
  const keep=p.rows.filter(r=>r.keep);
- keep.forEach(r=>{S.attempts=S.attempts.filter(a=>!(a.ay===r.ay&&a.sem===r.sem&&a.code===r.code&&a.src!=='manual'));delete r.keep;S.attempts.push(r);});
+ keep.forEach(r=>{delete r.keep;upsertAttempt(r);});
  pending.splice(pi,1);save();if(!pending.length)tab='home';render();
 }
 
